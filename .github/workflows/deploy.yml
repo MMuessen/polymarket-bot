@@ -13,6 +13,6 @@ jobs:
       - name: Rapid Hot-Reload
         run: |
           cd /home/agent/polymarket-bot
-          # Fixed: Added 'up' and used the correct hyphenated command for your server
+          # This command creates the 'up' signal your server is looking for
           sudo docker-compose up -d --build --force-recreate
           sudo docker image prune -f
