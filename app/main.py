@@ -8,7 +8,7 @@ import platform
 import socket
 import json
 import uuid
-from collections import deque
+from collections import Counter, deque
 from contextlib import asynccontextmanager
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -306,11 +306,20 @@ class TradingBot:
 
         self.logs: Deque[str] = deque(maxlen=300)
         self.market_snapshots: Dict[str, MarketSnapshot] = {}
+        self.raw_market_count: int = 0
+        self.normalized_market_count: int = 0
+        self.classified_market_count: int = 0
+        self.eligible_market_count: int = 0
+        self.market_rejections: Counter = Counter()
+        self.market_rejection_examples: Dict[str, List[str]] = {}
         self.spot_prices: Dict[str, float] = {"BTC": 0.0, "ETH": 0.0, "SOL": 0.0}
         self.health: Dict[str, Any] = {
             "last_market_refresh": None,
             "last_spot_refresh": None,
             "last_balance_refresh": None,
+            "last_coinbase_ws_message": None,
+            "coinbase_ws_status": "starting",
+            "market_pipeline": {},
             "loop_error": None,
         }
         self.strategy_states: Dict[str, StrategyState] = {
@@ -358,6 +367,8 @@ class TradingBot:
             self.session = aiohttp.ClientSession()
         if self.loop_task is None or self.loop_task.done():
             self.loop_task = asyncio.create_task(self._main_loop())
+        if not hasattr(self, "coinbase_task") or self.coinbase_task is None or self.coinbase_task.done():
+            self.coinbase_task = asyncio.create_task(self._coinbase_ws_loop())
         self.log("Background loop started.")
 
     async def stop(self) -> None:
@@ -368,6 +379,13 @@ class TradingBot:
             except asyncio.CancelledError:
                 pass
             self.loop_task = None
+        if hasattr(self, "coinbase_task") and self.coinbase_task:
+            self.coinbase_task.cancel()
+            try:
+                await self.coinbase_task
+            except asyncio.CancelledError:
+                pass
+            self.coinbase_task = None
         if self.session:
             await self.session.close()
             self.session = None
@@ -394,7 +412,6 @@ class TradingBot:
         assert self.session is not None
         while True:
             try:
-                await self.refresh_spots()
                 await self.refresh_markets()
                 await self.refresh_balance()
                 await self.run_strategies()
@@ -407,32 +424,118 @@ class TradingBot:
             await asyncio.sleep(self.poll_seconds)
 
     async def refresh_spots(self) -> None:
+        return
+
+    async def _coinbase_ws_loop(self) -> None:
         assert self.session is not None
-        url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana&vs_currencies=usd"
-        async with self.session.get(url, timeout=30) as resp:
-            data = await resp.json()
-        self.spot_prices = {
-            "BTC": float(data.get("bitcoin", {}).get("usd", 0.0)),
-            "ETH": float(data.get("ethereum", {}).get("usd", 0.0)),
-            "SOL": float(data.get("solana", {}).get("usd", 0.0)),
+        url = "wss://ws-feed.exchange.coinbase.com"
+        products = ["BTC-USD", "ETH-USD", "SOL-USD"]
+        product_to_symbol = {
+            "BTC-USD": "BTC",
+            "ETH-USD": "ETH",
+            "SOL-USD": "SOL",
         }
-        self.health["last_spot_refresh"] = datetime.now(timezone.utc).isoformat()
+
+        while True:
+            try:
+                self.health["coinbase_ws_status"] = "connecting"
+                async with self.session.ws_connect(url, heartbeat=20, autoping=True) as ws:
+                    self.health["coinbase_ws_status"] = "connected"
+                    await ws.send_json({
+                        "type": "subscribe",
+                        "product_ids": products,
+                        "channels": ["ticker"]
+                    })
+                    self.log("Coinbase WS connected for BTC/ETH/SOL.")
+
+                    async for msg in ws:
+                        if msg.type == aiohttp.WSMsgType.TEXT:
+                            data = msg.json()
+                            msg_type = data.get("type")
+                            if msg_type == "ticker":
+                                product_id = data.get("product_id")
+                                price = data.get("price")
+                                symbol = product_to_symbol.get(product_id)
+                                if symbol and price not in (None, ""):
+                                    try:
+                                        px = float(price)
+                                        if px > 0:
+                                            self.spot_prices[symbol] = px
+                                            now = datetime.now(timezone.utc).isoformat()
+                                            self.health["last_spot_refresh"] = now
+                                            self.health["last_coinbase_ws_message"] = now
+                                    except (TypeError, ValueError):
+                                        pass
+                        elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
+                            break
+
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                self.health["coinbase_ws_status"] = f"error: {exc}"
+                self.log(f"Coinbase WS error: {exc}")
+
+            self.health["coinbase_ws_status"] = "reconnecting"
+            await asyncio.sleep(3)
 
     async def refresh_markets(self) -> None:
         assert self.session is not None
         data = await self.kalshi_client.get_json(self.session, f"/markets?status=open&limit={self.max_markets}")
-        markets = data.get("markets", [])
-        filtered: Dict[str, MarketSnapshot] = {}
-        for market in markets:
-            text = f"{market.get('ticker', '')} {market.get('title', '')} {market.get('subtitle', '')} {market.get('category', '')}".upper()
-            if not any(term in text for term in self.watch_terms):
+        raw_markets = data.get("markets", [])
+        self.raw_market_count = len(raw_markets)
+
+        snapshots: Dict[str, MarketSnapshot] = {}
+        rejections: Counter = Counter()
+        examples: Dict[str, List[str]] = {}
+        normalized_count = 0
+        classified_count = 0
+        eligible_count = 0
+
+        for raw in raw_markets:
+            normalized = self._normalize_market(raw)
+            if not normalized:
+                rejections["normalize_failed"] += 1
+                self._add_rejection_example(examples, "normalize_failed", raw.get("ticker") or raw.get("title") or "unknown")
                 continue
-            snapshot = self._market_to_snapshot(market)
+            normalized_count += 1
+
+            classified = self._classify_market(normalized)
+            if classified.get("asset"):
+                classified_count += 1
+
+            eligible, reason = self._evaluate_market_eligibility(classified)
+            if not eligible:
+                rejections[reason] += 1
+                self._add_rejection_example(examples, reason, classified.get("ticker") or classified.get("title") or "unknown")
+                continue
+
+            snapshot = self._classified_to_snapshot(classified)
             if snapshot:
-                filtered[snapshot.ticker] = snapshot
-        self.market_snapshots = filtered
+                snapshots[snapshot.ticker] = snapshot
+                eligible_count += 1
+            else:
+                rejections["snapshot_failed"] += 1
+                self._add_rejection_example(examples, "snapshot_failed", classified.get("ticker") or classified.get("title") or "unknown")
+
+        self.market_snapshots = snapshots
+        self.normalized_market_count = normalized_count
+        self.classified_market_count = classified_count
+        self.eligible_market_count = eligible_count
+        self.market_rejections = rejections
+        self.market_rejection_examples = examples
         self.health["last_market_refresh"] = datetime.now(timezone.utc).isoformat()
-        self.log(f"Watching {len(filtered)} crypto-related markets.")
+        self.health["market_pipeline"] = {
+            "raw_open_markets": self.raw_market_count,
+            "normalized_markets": self.normalized_market_count,
+            "classified_crypto_markets": self.classified_market_count,
+            "eligible_markets": self.eligible_market_count,
+            "rejections": dict(self.market_rejections),
+            "rejection_examples": self.market_rejection_examples,
+        }
+        self.log(
+            f"Market pipeline: raw={self.raw_market_count} normalized={self.normalized_market_count} "
+            f"classified={self.classified_market_count} eligible={self.eligible_market_count}"
+        )
 
     async def refresh_balance(self) -> None:
         if not self.kalshi_client.trading_enabled or self.session is None:
@@ -445,13 +548,14 @@ class TradingBot:
         except Exception as exc:
             self.log(f"Balance refresh failed: {exc}")
 
-    def _market_to_snapshot(self, market: Dict[str, Any]) -> Optional[MarketSnapshot]:
+    def _normalize_market(self, market: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         ticker = str(market.get("ticker", "")).upper().strip()
         if not ticker:
             return None
+
         title = str(market.get("title") or market.get("question") or ticker)
         subtitle = str(market.get("subtitle") or market.get("rules_primary") or "")
-        category = str(market.get("category") or "")
+        category = str(market.get("category") or market.get("series_ticker") or "")
         yes_bid = self._price_to_float(market.get("yes_bid_dollars"), market.get("yes_bid"))
         yes_ask = self._price_to_float(market.get("yes_ask_dollars"), market.get("yes_ask"))
         no_bid = self._price_to_float(market.get("no_bid_dollars"), market.get("no_bid"))
@@ -468,31 +572,112 @@ class TradingBot:
         if yes_bid is not None and yes_ask is not None:
             spread = round(max(0.0, yes_ask - yes_bid), 4)
 
-        close_dt = self._parse_dt(market.get("close_time") or market.get("expiration_time"))
-        symbol = self._detect_symbol(title + " " + subtitle + " " + ticker)
-        threshold, direction = self._parse_threshold(title + " " + subtitle)
-
-        return MarketSnapshot(
-            ticker=ticker,
-            title=title,
-            subtitle=subtitle,
-            category=category,
-            yes_bid=yes_bid,
-            yes_ask=yes_ask,
-            no_bid=no_bid,
-            no_ask=no_ask,
-            last_price=last_price,
-            mid=mid,
-            spread=spread,
-            close_time=close_dt.isoformat() if close_dt else None,
-            raw_close_time=close_dt,
-            volume_24h=self._float_or_none(market.get("volume_24h_fp") or market.get("volume_24h")),
-            liquidity=self._price_to_float(market.get("liquidity_dollars"), market.get("liquidity")),
-            status=str(market.get("status") or "unknown"),
-            spot_symbol=symbol,
-            threshold=threshold,
-            direction=direction,
+        close_dt = self._parse_dt(
+            market.get("close_time")
+            or market.get("expiration_time")
+            or market.get("settlement_time")
         )
+
+        return {
+            "ticker": ticker,
+            "title": title,
+            "subtitle": subtitle,
+            "category": category,
+            "yes_bid": yes_bid,
+            "yes_ask": yes_ask,
+            "no_bid": no_bid,
+            "no_ask": no_ask,
+            "last_price": last_price,
+            "mid": mid,
+            "spread": spread,
+            "close_dt": close_dt,
+            "close_time": close_dt.isoformat() if close_dt else None,
+            "volume_24h": self._float_or_none(market.get("volume_24h_fp") or market.get("volume_24h")),
+            "liquidity": self._price_to_float(market.get("liquidity_dollars"), market.get("liquidity")),
+            "status": str(market.get("status") or "unknown"),
+            "raw": market,
+        }
+
+    def _classify_market(self, normalized: Dict[str, Any]) -> Dict[str, Any]:
+        text = " ".join([
+            normalized.get("ticker", ""),
+            normalized.get("title", ""),
+            normalized.get("subtitle", ""),
+            normalized.get("category", ""),
+        ])
+        asset = self._detect_symbol(text)
+        threshold, direction = self._parse_threshold(
+            f"{normalized.get('title', '')} {normalized.get('subtitle', '')}"
+        )
+
+        market_family = "unsupported"
+        parse_confidence = "low"
+        if asset and threshold and direction:
+            market_family = "price_threshold"
+            parse_confidence = "high"
+        elif asset:
+            market_family = "crypto_other"
+            parse_confidence = "medium"
+
+        classified = dict(normalized)
+        classified.update({
+            "asset": asset,
+            "threshold": threshold,
+            "direction": direction,
+            "market_family": market_family,
+            "parse_confidence": parse_confidence,
+        })
+        return classified
+
+    def _evaluate_market_eligibility(self, classified: Dict[str, Any]) -> tuple[bool, str]:
+        if classified.get("status", "").lower() != "open":
+            return False, "not_open"
+        if not classified.get("asset"):
+            return False, "not_crypto_asset"
+        if classified.get("market_family") != "price_threshold":
+            return False, "unsupported_market_structure"
+        if classified.get("yes_ask") is None or classified.get("yes_bid") is None:
+            return False, "missing_yes_quotes"
+        if classified.get("no_ask") is None or classified.get("no_bid") is None:
+            return False, "missing_no_quotes"
+        if classified.get("mid") is None:
+            return False, "missing_mid"
+        if classified.get("spread") is None:
+            return False, "missing_spread"
+        if classified.get("close_dt") is None:
+            return False, "missing_expiry"
+        if classified.get("threshold") is None or classified.get("direction") is None:
+            return False, "threshold_parse_failed"
+        return True, "eligible"
+
+    def _classified_to_snapshot(self, classified: Dict[str, Any]) -> Optional[MarketSnapshot]:
+        return MarketSnapshot(
+            ticker=classified["ticker"],
+            title=classified["title"],
+            subtitle=classified["subtitle"],
+            category=classified["category"],
+            yes_bid=classified["yes_bid"],
+            yes_ask=classified["yes_ask"],
+            no_bid=classified["no_bid"],
+            no_ask=classified["no_ask"],
+            last_price=classified["last_price"],
+            mid=classified["mid"],
+            spread=classified["spread"],
+            close_time=classified["close_time"],
+            raw_close_time=classified["close_dt"],
+            volume_24h=classified["volume_24h"],
+            liquidity=classified["liquidity"],
+            status=classified["status"],
+            spot_symbol=classified["asset"],
+            threshold=classified["threshold"],
+            direction=classified["direction"],
+        )
+
+    @staticmethod
+    def _add_rejection_example(examples: Dict[str, List[str]], reason: str, label: str) -> None:
+        bucket = examples.setdefault(reason, [])
+        if len(bucket) < 5 and label not in bucket:
+            bucket.append(label)
 
     async def run_strategies(self) -> None:
         for snapshot in list(self.market_snapshots.values()):
@@ -714,8 +899,17 @@ class TradingBot:
                 "kalshi_private_key_loaded": bool(self.kalshi_client.private_key),
                 "kalshi_trading_enabled": self.kalshi_client.trading_enabled,
                 "kalshi_base_url": self.kalshi_client.base_url,
+                "spot_source": "coinbase_websocket",
             },
             "health": self.health,
+            "pipeline": {
+                "raw_open_markets": self.raw_market_count,
+                "normalized_markets": self.normalized_market_count,
+                "classified_crypto_markets": self.classified_market_count,
+                "eligible_markets": self.eligible_market_count,
+                "rejections": dict(self.market_rejections),
+                "rejection_examples": self.market_rejection_examples,
+            },
             "spots": self.spot_prices,
             "balances": {
                 "kalshi_balance": self.kalshi_balance,
@@ -758,6 +952,7 @@ class TradingBot:
             },
             "credentials": status["credentials"],
             "health": status["health"],
+            "pipeline": status["pipeline"],
             "balances": status["balances"],
             "spots": status["spots"],
             "strategies": status["strategies"],

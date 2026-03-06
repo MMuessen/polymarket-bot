@@ -14,7 +14,63 @@
     .warn { color: #fbbf24; }
     .muted { color: #94a3b8; }
   </style>
+
+<style>
+.tooltip-wrapper { position: relative; display: inline-block; width: 100%; }
+.tooltip-box {
+    position: absolute;
+    bottom: 110%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #111827;
+    color: #e5e7eb;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.4;
+    width: 260px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    z-index: 100;
+}
+.tooltip-wrapper:hover .tooltip-box {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-4px);
+}
+</style>
+
+<style>
+.tt-wrap { position: relative; width: 100%; }
+.tt-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  transform: translateX(-50%) translateY(4px);
+  width: 280px;
+  max-width: min(280px, 90vw);
+  background: rgba(15, 23, 42, 0.98);
+  color: #e5e7eb;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .16s ease, transform .16s ease;
+  z-index: 200;
+}
+.tt-wrap:hover .tt-tip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+</style>
 </head>
+
+
 <body class="text-slate-100 min-h-screen">
   <div class="max-w-[1700px] mx-auto px-4 py-4">
     <div class="glass rounded-2xl px-5 py-4 mb-4">
@@ -58,19 +114,44 @@
       <div class="2xl:col-span-3 space-y-4">
         <div class="glass rounded-2xl p-4">
           <div class="text-lg font-semibold mb-3">Execution Controls</div>
-          <div class="space-y-3">
-            <div class="grid grid-cols-2 gap-2">
-              <button onclick="setMode('paper')" class="rounded-xl px-4 py-3 bg-cyan-700 hover:bg-cyan-600 font-semibold">Paper</button>
-              <button onclick="setMode('live')" class="rounded-xl px-4 py-3 bg-rose-700 hover:bg-rose-600 font-semibold">Live</button>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="tt-wrap">
+              <button onclick="setMode('paper')" class="w-full rounded-xl px-4 py-5 bg-cyan-700 hover:bg-cyan-600 font-semibold text-2xl">
+                Paper
+              </button>
+              <div class="tt-tip">
+                Runs the strategy on live market data but executes all orders in simulated mode. No real money is used.
+              </div>
             </div>
-            <div class="grid grid-cols-2 gap-2">
-              <button onclick="setArm(true)" class="rounded-xl px-4 py-3 bg-amber-600 hover:bg-amber-500 font-semibold">Arm Live</button>
-              <button onclick="setArm(false)" class="rounded-xl px-4 py-3 bg-slate-800 hover:bg-slate-700 font-semibold">Disarm</button>
+
+            <div class="tt-wrap">
+              <button onclick="setMode('live')" class="w-full rounded-xl px-4 py-5 bg-rose-700 hover:bg-rose-600 font-semibold text-2xl">
+                Live
+              </button>
+              <div class="tt-tip">
+                Switches the bot into real order-routing mode. Live orders still require the live safety switch to be armed.
+              </div>
+            </div>
+
+            <div class="tt-wrap">
+              <button onclick="setArm(true)" class="w-full rounded-xl px-4 py-5 bg-amber-600 hover:bg-amber-500 font-semibold text-2xl">
+                Arm Live
+              </button>
+              <div class="tt-tip">
+                Arms live trading. After this, any valid live-enabled strategy signal may place a real trade.
+              </div>
+            </div>
+
+            <div class="tt-wrap">
+              <button onclick="setArm(false)" class="w-full rounded-xl px-4 py-5 bg-slate-700 hover:bg-slate-600 font-semibold text-2xl">
+                Disarm
+              </button>
+              <div class="tt-tip">
+                Stops any new live trades from being placed. Existing positions are not closed automatically.
+              </div>
             </div>
           </div>
-        </div>
-
-        <div class="glass rounded-2xl p-4">
+        </div><div class="glass rounded-2xl p-4">
           <div class="text-lg font-semibold mb-3">Risk + Connection</div>
           <div class="space-y-2 text-sm">
             <div class="flex justify-between gap-3"><span class="muted">Kalshi base</span><span id="kalshiBase" class="mono text-right break-all"></span></div>
@@ -149,8 +230,16 @@
 
       <div class="2xl:col-span-3 space-y-4">
         <div class="glass rounded-2xl p-4">
+          <div class="text-lg font-semibold mb-3">Pipeline Health</div>
+          <div class="grid grid-cols-2 gap-2 text-sm mb-3">
+            <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Raw</div><div id="pipeRaw" class="mono text-lg">0</div></div>
+            <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Normalized</div><div id="pipeNorm" class="mono text-lg">0</div></div>
+            <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Classified</div><div id="pipeClass" class="mono text-lg">0</div></div>
+            <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Eligible</div><div id="pipeEligible" class="mono text-lg">0</div></div>
+          </div>
+          <pre id="pipelineBox" class="bg-slate-950/70 border border-white/5 rounded-xl p-4 overflow-auto text-xs text-amber-300 mono h-48 mb-4"></pre>
           <div class="text-lg font-semibold mb-3">System Health</div>
-          <pre id="healthBox" class="bg-slate-950/70 border border-white/5 rounded-xl p-4 overflow-auto text-xs text-cyan-300 mono h-72"></pre>
+          <pre id="healthBox" class="bg-slate-950/70 border border-white/5 rounded-xl p-4 overflow-auto text-xs text-cyan-300 mono h-56"></pre>
         </div>
 
         <div class="glass rounded-2xl p-4">
@@ -310,8 +399,14 @@
       document.getElementById("strategyControls").innerHTML =
         Object.entries(data.strategies).map(([name, s]) => renderStrategy(name, s)).join("");
 
+      document.getElementById("pipeRaw").textContent = String(data.pipeline?.raw_open_markets ?? 0);
+      document.getElementById("pipeNorm").textContent = String(data.pipeline?.normalized_markets ?? 0);
+      document.getElementById("pipeClass").textContent = String(data.pipeline?.classified_crypto_markets ?? 0);
+      document.getElementById("pipeEligible").textContent = String(data.pipeline?.eligible_markets ?? 0);
+
       renderMarkets(data.markets || []);
       renderTrades(data.recent_trades || []);
+      document.getElementById("pipelineBox").textContent = JSON.stringify(data.pipeline || {}, null, 2);
       document.getElementById("healthBox").textContent = JSON.stringify(data.health, null, 2);
       document.getElementById("logsBox").innerHTML = (data.logs || []).map(x => `<div>${x}</div>`).join("");
     }
