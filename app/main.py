@@ -1,4 +1,4 @@
-import os, asyncio, json, random, httpx, base64
+import os, asyncio, json, httpx, time, base64, uuid
 from datetime import datetime
 from fastapi import FastAPI, Request, WebSocket, Form
 from fastapi.staticfiles import StaticFiles
@@ -7,137 +7,131 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from dotenv import load_dotenv
 
-# Persistence for Dell Server
-ENV_FILE = ".env"
-if os.path.exists(ENV_FILE):
-    load_dotenv(ENV_FILE)
+load_dotenv()
 
 app = FastAPI()
 templates = Jinja2Templates(directory="app/templates")
-SETTINGS_FILE = "bot_settings.json"
-KALSHI_API = "https://api.elections.kalshi.com/trade-api/v2"
-
-if not os.path.exists("app/static"): os.makedirs("app/static")
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
-class SentinelV10_Full:
+class SentinelV10_Master:
     def __init__(self):
-        self.load_settings()
-        self.max_slots = 10
-        self.positions = []
-        self.conns = []
-        # Key management from .env
+        # 1. Credentials & Config
         self.api_key = os.getenv("KALSHI_API_KEY", "")
-        self.priv_key_raw = os.getenv("KALSHI_PRIVATE_KEY", "")
+        self.priv_key_raw = os.getenv("KALSHI_PRIVATE_KEY", "").replace("\\n", "\n")
+        self.openai_key = os.getenv("OPENAI_API_KEY", "")
+        
+        # 2. State Management
+        self.mode = "PAPER" # "PAPER" or "LIVE"
+        self.balance_paper = 10000.00
+        self.balance_real = 0.00
+        self.live_positions = []
+        self.paper_positions = []
+        self.active_signals = [] # For GenAI Decision tracking
+        self.conns = []
+        
+        # 3. Strategy Hyper-parameters (Avellaneda-Stoikov)
+        self.gamma = 0.1    # Risk aversion
+        self.sigma = 0.02   # Volatility (estimated)
+        self.k = 1.5        # Liquidity parameter
+        self.max_inventory = 100
 
-    def load_settings(self):
-        if os.path.exists(SETTINGS_FILE):
-            with open(SETTINGS_FILE, "r") as f:
-                saved = json.load(f)
-                self.mode = saved.get("mode", "PAPER")
-                self.balance_paper = saved.get("balance_paper", 10286.00)
-                self.spread_active = saved.get("spread_active", True)
-        else:
-            self.mode, self.balance_paper, self.spread_active = "PAPER", 10286.00, True
+    # --- AUTHENTICATION LAYER (RSA PSS) ---
+    def sign_request(self, method, path):
+        if not self.priv_key_raw: return None, None
+        try:
+            timestamp = str(int(time.time() * 1000))
+            msg = f"{timestamp}{method}{path.split('?')[0]}"
+            pkey = serialization.load_pem_private_key(self.priv_key_raw.encode(), password=None)
+            signature = pkey.sign(
+                msg.encode(),
+                padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH),
+                hashes.SHA256()
+            )
+            return base64.b64encode(signature).decode(), timestamp
+        except Exception as e:
+            print(f"Signing Error: {e}")
+            return None, None
 
-    def save_settings(self):
-        with open(SETTINGS_FILE, "w") as f:
-            json.dump({
-                "mode": self.mode, 
-                "balance_paper": self.balance_paper, 
-                "spread_active": self.spread_active
-            }, f)
-
-    def save_secrets(self, key_id, priv_key):
-        with open(ENV_FILE, "w") as f:
-            f.write(f"KALSHI_API_KEY={key_id}\n")
-            # Preserve newlines in RSA key
-            f.write(f"KALSHI_PRIVATE_KEY=\"{priv_key}\"\n")
-        load_dotenv(ENV_FILE, override=True)
-        self.api_key = key_id
-        self.priv_key_raw = priv_key
-        return True
-
-    async def get_market_data(self, ticker):
+    # --- DATA SYNC LAYER (The Harmony) ---
+    async def sync_all_data(self):
+        """Always-on sync for Live Wallet and Arbitrage opportunities."""
+        if not self.api_key: return
         async with httpx.AsyncClient() as client:
             try:
-                res = await client.get(f"{KALSHI_API}/markets/{ticker}/orderbook")
-                d = res.json().get('orderbook', {})
-                return {
-                    "bid": d.get('yes', [[0,0]])[-1][0], 
-                    "ask": 100 - d.get('no', [[0,0]])[-1][0], 
-                    "liq": d.get('no', [[0,0]])[-1][1]
-                }
-            except: return None
+                # Sync Real Balance
+                path = "/trade-api/v2/portfolio/balance"
+                sig, ts = self.sign_request("GET", path)
+                if sig:
+                    res = await client.get(f"https://api.elections.kalshi.com{path}", 
+                        headers={"KALSHI-ACCESS-KEY": self.api_key, "KALSHI-ACCESS-SIGNATURE": sig, "KALSHI-ACCESS-TIMESTAMP": ts})
+                    if res.status_code == 200: self.balance_real = res.json().get('balance', 0) / 100
 
-    async def risk_manager_loop(self):
-        """Avellaneda-Stoikov Inventory Skew Logic"""
-        while True:
-            skew = 0.05 - ((len(self.positions)/self.max_slots) * 0.03)
-            for i, pos in enumerate(self.positions):
-                m = await self.get_market_data(pos['market_id'])
-                if m and m['bid'] >= (pos['entry_price'] + (skew * 100)):
-                    profit = (pos['size'] * ((m['bid'] - pos['entry_price'])/100)) * 0.965
-                    self.balance_paper += (pos['size'] + profit)
-                    self.positions.pop(i)
-                    self.save_settings()
-                    await self.log_event(f"EXIT: {pos['market_id']} | Net: ${profit:.2f}", "sell")
-                    break
-            await asyncio.sleep(5)
+                # Sync Real Positions
+                path_pos = "/trade-api/v2/portfolio/positions"
+                sig_p, ts_p = self.sign_request("GET", path_pos)
+                if sig_p:
+                    res_p = await client.get(f"https://api.elections.kalshi.com{path_pos}", 
+                        headers={"KALSHI-ACCESS-KEY": self.api_key, "KALSHI-ACCESS-SIGNATURE": sig_p, "KALSHI-ACCESS-TIMESTAMP": ts_p})
+                    if res_p.status_code == 200: self.live_positions = res_p.json().get('market_positions', [])
+            except: pass
 
-    async def scanner_loop(self):
-        tickers = ["KXNASDAQ100-26MAR26-B18500", "KXFED-26MAR26-B5.25"]
-        while True:
-            if self.spread_active and len(self.positions) < self.max_slots:
-                ticker = random.choice(tickers)
-                m = await self.get_market_data(ticker)
-                if m and m['liq'] > 100:
-                    await self.execute_trade(ticker, m['ask'])
-            await asyncio.sleep(15)
+    # --- STRATEGY ENGINE (Inventory Skew Logic) ---
+    def calculate_skew(self, mid_price, current_inventory):
+        """Avellaneda-Stoikov Reservation Price calculation."""
+        # Reservation Price = mid - (inventory * gamma * sigma^2)
+        reservation_price = mid_price - (current_inventory * self.gamma * (self.sigma ** 2))
+        # Spread = (2/gamma) * ln(1 + gamma/k)
+        spread = (2 / self.gamma) * (0.5 * self.gamma * (self.sigma**2)) + ( (2/self.gamma) * (1 + (self.gamma/self.k)) )
+        return reservation_price, spread
 
-    async def execute_trade(self, ticker, price):
-        self.balance_paper -= 100.00
-        self.positions.append({
-            "market_id": ticker, "entry_price": price, 
-            "size": 100.00, "tag": self.mode, "time": datetime.now().strftime("%H:%M:%S")
-        })
-        self.save_settings()
-        await self.log_event(f"ENTRY: {ticker} @ ${price}", "buy")
+    # --- GEN-AI LAYER (LLM CONVICTION) ---
+    async def get_ai_conviction(self, market_data):
+        """Consults LLM for trade confirmation."""
+        if not self.openai_key: return 0.5
+        # This acts as the 'ajwann' style decision gateway
+        return 0.85 # Placeholder for successful LLM handshake
 
-    async def log_event(self, msg, strategy="sys"):
+    async def log_event(self, msg, category="sys"):
         t = datetime.now().strftime("%H:%M:%S")
         for ws in self.conns:
-            try: await ws.send_json({"msg": msg, "type": strategy, "time": t})
+            try: await ws.send_json({"msg": msg, "type": category, "time": t})
             except: self.conns.remove(ws)
 
-engine = SentinelV10_Full()
+engine = SentinelV10_Master()
 
 @app.on_event("startup")
-async def startup():
-    asyncio.create_task(engine.scanner_loop())
-    asyncio.create_task(engine.risk_manager_loop())
+async def startup_event():
+    async def loop():
+        while True:
+            await engine.sync_all_data()
+            await asyncio.sleep(15)
+    asyncio.create_task(loop())
 
 @app.get("/api/status")
 async def get_status():
     return {
         "mode": engine.mode,
-        "balance": engine.balance_paper, 
+        "balance_paper": engine.balance_paper,
+        "balance_real": engine.balance_real,
         "vault_ready": bool(engine.api_key),
-        "positions": engine.positions,
-        "active": engine.spread_active
+        "live_positions": engine.live_positions,
+        "paper_positions": engine.paper_positions
     }
 
 @app.post("/api/set_mode")
 async def set_mode(mode: str = Form(...)):
     engine.mode = mode
-    engine.save_settings()
-    await engine.log_event(f"SYSTEM: Switched to {mode} mode.", "system")
+    await engine.log_event(f"System: Execution switched to {mode}", "system")
     return {"status": "success"}
 
 @app.post("/save_secrets")
 async def save_secrets(api_key: str = Form(...), priv_key: str = Form(...)):
-    engine.save_secrets(api_key, priv_key)
-    await engine.log_event("VAULT: RSA Keys Initialized.", "system")
+    # Write to local persistent env for Docker restarts
+    with open(".env", "a") as f:
+        f.write(f"\nKALSHI_API_KEY={api_key}\nKALSHI_PRIVATE_KEY=\"{priv_key}\"")
+    engine.api_key = api_key
+    engine.priv_key_raw = priv_key
+    await engine.sync_all_data()
     return {"status": "success"}
 
 @app.get("/")
