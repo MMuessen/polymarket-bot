@@ -95,12 +95,12 @@
             <div id="armBadge" class="text-xl font-semibold">-</div>
           </div>
           <div class="glass rounded-xl px-4 py-3">
-            <div class="text-xs text-slate-400 uppercase">Cash</div>
-            <div id="cashCard" class="text-xl font-semibold mono">$0.00</div>
+            <div class="text-xs text-slate-400 uppercase">Paper Equity</div>
+            <div id="paperEquityCard" class="text-xl font-semibold mono">$0.00</div>
           </div>
           <div class="glass rounded-xl px-4 py-3">
-            <div class="text-xs text-slate-400 uppercase">Portfolio</div>
-            <div id="portfolioCard" class="text-xl font-semibold mono">$0.00</div>
+            <div class="text-xs text-slate-400 uppercase">Paper PnL</div>
+            <div id="paperPnlCard" class="text-xl font-semibold mono">$0.00</div>
           </div>
           <div class="glass rounded-xl px-4 py-3">
             <div class="text-xs text-slate-400 uppercase">Top Edge</div>
@@ -168,6 +168,17 @@
             <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3 flex justify-between"><span class="muted">ETH</span><span id="spotETH" class="mono">$0</span></div>
             <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3 flex justify-between"><span class="muted">SOL</span><span id="spotSOL" class="mono">$0</span></div>
           </div>
+        </div>
+
+        <div class="glass rounded-2xl p-4">
+          <div class="text-lg font-semibold mb-3">Paper Book</div>
+          <div class="grid grid-cols-2 gap-2 mb-3 text-sm">
+            <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Starting</div><div id="paperStart" class="mono text-lg">$0.00</div></div>
+            <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Cash</div><div id="paperCash" class="mono text-lg">$0.00</div></div>
+            <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Market Value</div><div id="paperMarketValue" class="mono text-lg">$0.00</div></div>
+            <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Positions</div><div id="paperPositions" class="mono text-lg">0</div></div>
+          </div>
+          <pre id="paperBox" class="bg-slate-950/70 border border-white/5 rounded-xl p-4 overflow-auto text-xs text-emerald-300 mono h-48"></pre>
         </div>
 
         <div class="glass rounded-2xl p-4">
@@ -383,13 +394,25 @@
       document.getElementById("armBadge").textContent = data.live_armed ? "ARMED" : "DISARMED";
       document.getElementById("armBadge").className = data.live_armed ? "text-xl font-semibold warn" : "text-xl font-semibold text-slate-500";
 
-      document.getElementById("cashCard").textContent = money(data.balances.kalshi_balance);
-      document.getElementById("portfolioCard").textContent = money(data.balances.portfolio_value);
+      document.getElementById("paperEquityCard").textContent = money(data.paper?.equity ?? 0);
+      document.getElementById("paperPnlCard").textContent = money(data.paper?.unrealized_pnl ?? 0);
+      document.getElementById("paperPnlCard").className =
+        "text-xl font-semibold mono " + ((data.paper?.unrealized_pnl ?? 0) > 0 ? "good" : ((data.paper?.unrealized_pnl ?? 0) < 0 ? "bad" : "text-slate-200"));
       document.getElementById("edgeCard").textContent = pct(data.top_edge);
 
       document.getElementById("spotBTC").textContent = money(data.spots.BTC);
       document.getElementById("spotETH").textContent = money(data.spots.ETH);
       document.getElementById("spotSOL").textContent = money(data.spots.SOL);
+
+      document.getElementById("paperStart").textContent = money(data.paper?.starting_balance ?? 0);
+      document.getElementById("paperCash").textContent = money(data.paper?.cash ?? 0);
+      document.getElementById("paperMarketValue").textContent = money(data.paper?.market_value ?? 0);
+      document.getElementById("paperPositions").textContent = String(data.paper?.position_count ?? 0);
+
+      const paperPositions = (data.paper?.positions || []).map(p =>
+        `${p.ticker} ${String(p.side).toUpperCase()} x${Number(p.contracts).toFixed(0)} | cost ${p.avg_cost.toFixed(4)} | mark ${p.mark_price.toFixed(4)} | pnl ${money(p.unrealized_pnl)}`
+      ).join("\n");
+      document.getElementById("paperBox").textContent = paperPositions || "No paper positions yet.";
 
       document.getElementById("kalshiBase").textContent = data.credentials.kalshi_base_url;
       document.getElementById("keyLoaded").textContent = yesNo(data.credentials.kalshi_key_loaded);

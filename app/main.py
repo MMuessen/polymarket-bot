@@ -299,7 +299,8 @@ class TradingBot:
         self.paper_mode = os.getenv("PAPER_MODE", "true").lower() == "true"
         self.live_armed = os.getenv("ARM_LIVE_TRADING", "false").lower() == "true"
         self.poll_seconds = max(5, int(os.getenv("POLL_SECONDS", "15")))
-        self.max_markets = max(10, int(os.getenv("MAX_MARKETS", "200")))
+        self.full_scan_seconds = max(30, int(os.getenv("FULL_MARKET_SCAN_SECONDS", "300")))
+        self.max_markets = max(1000, int(os.getenv("MAX_MARKETS", "1000")))
         self.watch_terms = [t.strip().upper() for t in os.getenv(
             "WATCH_TERMS", "BTC,BITCOIN,ETH,ETHEREUM,SOL,SOLANA,CRYPTO"
         ).split(",") if t.strip()]
@@ -310,8 +311,12 @@ class TradingBot:
         self.normalized_market_count: int = 0
         self.classified_market_count: int = 0
         self.eligible_market_count: int = 0
+        self.watched_market_count: int = 0
         self.market_rejections: Counter = Counter()
         self.market_rejection_examples: Dict[str, List[str]] = {}
+        self.raw_market_samples: List[Dict[str, Any]] = []
+        self.watched_market_samples: List[Dict[str, Any]] = []
+        self.last_full_scan_at: Optional[datetime] = None
         self.spot_prices: Dict[str, float] = {"BTC": 0.0, "ETH": 0.0, "SOL": 0.0}
         self.health: Dict[str, Any] = {
             "last_market_refresh": None,
@@ -349,6 +354,7 @@ class TradingBot:
         self.cooldowns: Dict[str, datetime] = {}
         self.kalshi_balance: float = 0.0
         self.portfolio_value: float = 0.0
+        self.paper_starting_balance: float = float(os.getenv("PAPER_STARTING_BALANCE", "1000"))
         self.session: Optional[aiohttp.ClientSession] = None
         self.loop_task: Optional[asyncio.Task] = None
         self._lock = asyncio.Lock()
@@ -480,9 +486,30 @@ class TradingBot:
 
     async def refresh_markets(self) -> None:
         assert self.session is not None
-        data = await self.kalshi_client.get_json(self.session, f"/markets?status=open&limit={self.max_markets}")
-        raw_markets = data.get("markets", [])
+
+        need_full_scan = (
+            self.last_full_scan_at is None
+            or (datetime.now(timezone.utc) - self.last_full_scan_at).total_seconds() >= self.full_scan_seconds
+            or not self.market_snapshots
+        )
+
+        if not need_full_scan:
+            self.health["last_market_refresh"] = datetime.now(timezone.utc).isoformat()
+            return
+
+        raw_markets = await self._fetch_all_open_markets()
+        self.last_full_scan_at = datetime.now(timezone.utc)
         self.raw_market_count = len(raw_markets)
+        self.raw_market_samples = [
+            {
+                "ticker": str(m.get("ticker", "")),
+                "title": str(m.get("title") or m.get("question") or ""),
+                "subtitle": str(m.get("subtitle") or ""),
+                "category": str(m.get("category") or m.get("series_ticker") or ""),
+                "status": str(m.get("status") or ""),
+            }
+            for m in raw_markets[:20]
+        ]
 
         snapshots: Dict[str, MarketSnapshot] = {}
         rejections: Counter = Counter()
@@ -490,6 +517,7 @@ class TradingBot:
         normalized_count = 0
         classified_count = 0
         eligible_count = 0
+        watched_market_samples: List[Dict[str, Any]] = []
 
         for raw in raw_markets:
             normalized = self._normalize_market(raw)
@@ -500,8 +528,19 @@ class TradingBot:
             normalized_count += 1
 
             classified = self._classify_market(normalized)
+
             if classified.get("asset"):
                 classified_count += 1
+                if len(watched_market_samples) < 20:
+                    watched_market_samples.append({
+                        "ticker": classified.get("ticker"),
+                        "title": classified.get("title"),
+                        "asset": classified.get("asset"),
+                        "market_family": classified.get("market_family"),
+                        "status": classified.get("status"),
+                        "threshold": classified.get("threshold"),
+                        "direction": classified.get("direction"),
+                    })
 
             eligible, reason = self._evaluate_market_eligibility(classified)
             if not eligible:
@@ -521,8 +560,10 @@ class TradingBot:
         self.normalized_market_count = normalized_count
         self.classified_market_count = classified_count
         self.eligible_market_count = eligible_count
+        self.watched_market_count = classified_count
         self.market_rejections = rejections
         self.market_rejection_examples = examples
+        self.watched_market_samples = watched_market_samples
         self.health["last_market_refresh"] = datetime.now(timezone.utc).isoformat()
         self.health["market_pipeline"] = {
             "raw_open_markets": self.raw_market_count,
@@ -531,11 +572,38 @@ class TradingBot:
             "eligible_markets": self.eligible_market_count,
             "rejections": dict(self.market_rejections),
             "rejection_examples": self.market_rejection_examples,
+            "raw_market_samples": self.raw_market_samples,
+            "watched_market_samples": self.watched_market_samples,
+            "last_full_scan_at": self.last_full_scan_at.isoformat() if self.last_full_scan_at else None,
+            "full_scan_seconds": self.full_scan_seconds,
         }
         self.log(
             f"Market pipeline: raw={self.raw_market_count} normalized={self.normalized_market_count} "
             f"classified={self.classified_market_count} eligible={self.eligible_market_count}"
         )
+
+    async def _fetch_all_open_markets(self) -> List[Dict[str, Any]]:
+        assert self.session is not None
+        markets: List[Dict[str, Any]] = []
+        cursor: Optional[str] = None
+
+        while True:
+            path = f"/markets?status=open&limit={self.max_markets}"
+            if cursor:
+                path += f"&cursor={cursor}"
+            data = await self.kalshi_client.get_json(self.session, path)
+
+            batch = data.get("markets", []) or []
+            markets.extend(batch)
+
+            cursor = data.get("cursor") or data.get("next_cursor")
+            if not cursor or not batch:
+                break
+
+            if len(batch) < self.max_markets:
+                break
+
+        return markets
 
     async def refresh_balance(self) -> None:
         if not self.kalshi_client.trading_enabled or self.session is None:
@@ -606,6 +674,20 @@ class TradingBot:
             normalized.get("category", ""),
         ])
         asset = self._detect_symbol(text)
+
+        if not asset:
+            upper = text.upper()
+            for term in self.watch_terms:
+                if term in upper:
+                    if "BTC" in term or "BITCOIN" in term:
+                        asset = "BTC"
+                        break
+                    if "ETH" in term or "ETHEREUM" in term:
+                        asset = "ETH"
+                        break
+                    if "SOL" in term or "SOLANA" in term:
+                        asset = "SOL"
+                        break
         threshold, direction = self._parse_threshold(
             f"{normalized.get('title', '')} {normalized.get('subtitle', '')}"
         )
@@ -630,8 +712,9 @@ class TradingBot:
         return classified
 
     def _evaluate_market_eligibility(self, classified: Dict[str, Any]) -> tuple[bool, str]:
-        if classified.get("status", "").lower() != "open":
-            return False, "not_open"
+        status = str(classified.get("status", "")).lower()
+        if status and status not in {"open", "active", "initialized"}:
+            return False, f"status_{status}"
         if not classified.get("asset"):
             return False, "not_crypto_asset"
         if classified.get("market_family") != "price_threshold":
@@ -881,6 +964,76 @@ class TradingBot:
             for row in rows
         ]
 
+    def _mark_price_for_side(self, row: Trade) -> float:
+        snapshot = self.market_snapshots.get(row.ticker)
+        if snapshot:
+            if row.side == "yes":
+                candidates = [snapshot.yes_bid, snapshot.mid, snapshot.yes_ask]
+            else:
+                candidates = [snapshot.no_bid, None, snapshot.no_ask]
+                if snapshot.mid is not None:
+                    candidates[1] = round(max(0.0, min(1.0, 1.0 - snapshot.mid)), 4)
+            for val in candidates:
+                if val is not None:
+                    return float(val)
+        return float(row.fill_price if row.fill_price is not None else row.requested_price)
+
+    def paper_metrics(self) -> Dict[str, Any]:
+        with SessionLocal() as db:
+            rows = (
+                db.query(Trade)
+                .filter(Trade.mode.in_(["paper", "shadow"]))
+                .filter(Trade.status.in_(["filled", "submitted", "pending"]))
+                .all()
+            )
+
+        positions = []
+        total_cost = 0.0
+        total_mark_value = 0.0
+
+        for row in rows:
+            fill = float(row.fill_price if row.fill_price is not None else row.requested_price)
+            qty = float(row.contracts)
+            cost = qty * fill
+            mark = self._mark_price_for_side(row)
+            mark_value = qty * mark
+            pnl = mark_value - cost
+
+            total_cost += cost
+            total_mark_value += mark_value
+
+            positions.append({
+                "ticker": row.ticker,
+                "title": row.title,
+                "mode": row.mode,
+                "side": row.side,
+                "contracts": qty,
+                "avg_cost": round(fill, 4),
+                "mark_price": round(mark, 4),
+                "cost_basis": round(cost, 2),
+                "mark_value": round(mark_value, 2),
+                "unrealized_pnl": round(pnl, 2),
+                "status": row.status,
+            })
+
+        paper_cash = round(self.paper_starting_balance - total_cost, 2)
+        paper_market_value = round(total_mark_value, 2)
+        paper_equity = round(paper_cash + paper_market_value, 2)
+        paper_unrealized = round(paper_equity - self.paper_starting_balance, 2)
+
+        positions.sort(key=lambda x: abs(x["unrealized_pnl"]), reverse=True)
+
+        return {
+            "starting_balance": round(self.paper_starting_balance, 2),
+            "cash": paper_cash,
+            "market_value": paper_market_value,
+            "equity": paper_equity,
+            "unrealized_pnl": paper_unrealized,
+            "net_status": "green" if paper_unrealized > 0 else ("red" if paper_unrealized < 0 else "flat"),
+            "position_count": len(positions),
+            "positions": positions[:30],
+        }
+
     def dashboard_status(self) -> Dict[str, Any]:
         markets = sorted(
             [m.to_dict() for m in self.market_snapshots.values()],
@@ -909,12 +1062,17 @@ class TradingBot:
                 "eligible_markets": self.eligible_market_count,
                 "rejections": dict(self.market_rejections),
                 "rejection_examples": self.market_rejection_examples,
+                "raw_market_samples": self.raw_market_samples,
+                "watched_market_samples": self.watched_market_samples,
+                "last_full_scan_at": self.last_full_scan_at.isoformat() if self.last_full_scan_at else None,
+                "full_scan_seconds": self.full_scan_seconds,
             },
             "spots": self.spot_prices,
             "balances": {
                 "kalshi_balance": self.kalshi_balance,
                 "portfolio_value": self.portfolio_value,
             },
+            "paper": self.paper_metrics(),
             "strategies": {name: state.to_dict() for name, state in self.strategy_states.items()},
             "markets": markets,
             "recent_trades": self.recent_trades(40),
@@ -954,6 +1112,7 @@ class TradingBot:
             "health": status["health"],
             "pipeline": status["pipeline"],
             "balances": status["balances"],
+            "paper": status["paper"],
             "spots": status["spots"],
             "strategies": status["strategies"],
             "top_markets": status["markets"][:20],
