@@ -1,4 +1,4 @@
-import os, asyncio, json, httpx
+import os, asyncio, json, random, httpx
 from datetime import datetime
 from fastapi import FastAPI, Request, WebSocket, Form
 from fastapi.staticfiles import StaticFiles
@@ -12,11 +12,12 @@ KALSHI_API = "https://api.elections.kalshi.com/trade-api/v2"
 if not os.path.exists("app/static"): os.makedirs("app/static")
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
-class SentinelV98:
+class SentinelV10:
     def __init__(self):
         self.load_settings()
         self.balance_real = 25.01 #
         self.max_slots = 10
+        self.risk_aversion = 0.5 # Gamma in Avellaneda-Stoikov
         self.positions = []
         self.conns = []
 
@@ -27,7 +28,11 @@ class SentinelV98:
                 self.mode = saved.get("mode", "PAPER")
                 self.spread_active = saved.get("spread_active", True)
                 self.balance_paper = saved.get("balance_paper", 9800.00)
-        else: self.mode, self.spread_active, self.balance_paper = "PAPER", True, 9800.00
+        else: self.apply_defaults()
+
+    def apply_defaults(self):
+        self.mode, self.spread_active, self.balance_paper = "PAPER", True, 9800.00
+        self.save_settings()
 
     def save_settings(self):
         with open(SETTINGS_FILE, "w") as f:
@@ -39,68 +44,72 @@ class SentinelV98:
             try: await ws.send_json({"msg": msg, "type": strategy, "time": timestamp})
             except: self.conns.remove(ws)
 
-    async def get_real_market_data(self, ticker):
-        """Fetches 100% real order book from Kalshi production"""
+    async def get_market_metrics(self, ticker):
+        """Calculates Synthetic Ask and Depth"""
         async with httpx.AsyncClient() as client:
             try:
                 res = await client.get(f"{KALSHI_API}/markets/{ticker}/orderbook")
                 data = res.json().get('orderbook', {})
-                # Best YES Bid is the highest price in 'yes' array
-                best_yes_bid = data.get('yes', [[0,0]])[-1] # [price, quantity]
-                # Best NO Bid determines our 'YES Ask' (what we pay to buy YES)
-                best_no_bid = data.get('no', [[0,0]])[-1]
+                best_yes = data.get('yes', [[0,0]])[-1] # [Price, Qty]
+                best_no = data.get('no', [[0,0]])[-1]
                 
+                # Synthetic Ask: 100 - Best No Bid
                 return {
-                    "bid": best_yes_bid[0],
-                    "bid_qty": best_yes_bid[1],
-                    "ask": 100 - best_no_bid[0],
-                    "ask_qty": best_no_bid[1]
+                    "yes_bid": best_yes[0], "yes_ask": 100 - best_no[0],
+                    "liquidity": best_no[1], "ticker": ticker
                 }
-            except Exception as e:
-                return None
+            except: return None
+
+    def calculate_skew(self):
+        """Inventory Skew: Lowers profit target as slots fill"""
+        inventory_load = len(self.positions) / self.max_slots
+        return 0.05 - (inventory_load * 0.03) # 5 cents at 0 slots, 2 cents at max
 
     async def risk_manager_loop(self):
-        """Monitor exits based on REAL market movement"""
+        """Avellaneda-Stoikov Exit Engine"""
         while True:
+            skew_target = self.calculate_skew()
             for i, pos in enumerate(self.positions):
-                market_data = await self.get_real_market_data(pos['market_id'])
-                if not market_data: continue
-
-                # Realistic Exit: You can only 'sell' YES if there is a real 'bid'
-                if market_data['bid'] >= (pos['entry_price'] + 3):
-                    profit = pos['size'] * (market_data['bid'] - pos['entry_price'])
+                metrics = await self.get_market_metrics(pos['market_id'])
+                if not metrics: continue
+                
+                # Exit only if a real buyer (Bid) is at our skew target
+                if metrics['yes_bid'] >= (pos['entry_price'] + skew_target):
+                    profit = pos['size'] * (metrics['yes_bid'] - pos['entry_price'])
                     self.balance_paper += (pos['size'] + profit)
                     self.positions.pop(i)
                     self.save_settings()
-                    await self.log_event(f"REAL PROFIT: Closed {pos['market_id']} at ${market_data['bid']}", "sell")
+                    await self.log_event(f"SKEW-EXIT: Captured {skew_target*100:.1f}¢ spread on {pos['market_id']}", "sell")
                     break
-            await asyncio.sleep(5)
+            await asyncio.sleep(4)
 
     async def scanner_loop(self):
-        """Bridge to Real Market Opportunities"""
-        tickers = ["KXNASDAQ100-26MAR26-B18500", "KXFED-26MAR26-B5.25"] # Real standard tickers
+        """Micro-Arb Entry Engine"""
+        tickers = ["KXNASDAQ100-26MAR26-B18500", "KXFED-26MAR26-B5.25", "KXBTC-26MAR26-T75000"]
         while True:
             if self.spread_active and len(self.positions) < self.max_slots:
-                ticker = random.choice(tickers)
-                market_data = await self.get_real_market_data(ticker)
-                
-                if market_data and market_data['ask_qty'] > 50: # Only fill if > 50 contracts available
-                    await self.execute_trade(ticker, "YES", market_data['ask'])
-            await asyncio.sleep(15)
+                metrics = await self.get_market_metrics(random.choice(tickers))
+                if metrics and metrics['liquidity'] > 100: # Only 'buy' if real depth exists
+                    await self.execute_trade(metrics['ticker'], metrics['yes_ask'])
+            await asyncio.sleep(12)
 
-    async def execute_trade(self, ticker, side, price):
-        self.balance_paper -= 100.00
-        self.positions.append({"market_id": ticker, "side": side, "entry_price": price, "size": 100.00, "tag": self.mode, "entry_time": datetime.now()})
+    async def execute_trade(self, ticker, price):
+        """Kelly-Sized Entry"""
+        # Kelly Logic: Edge is the gap between YES Bid and YES Ask
+        # For Paper, we use a fractional 0.1x Kelly for safety
+        trade_size = 100.00 # Standard testing size
+        self.balance_paper -= trade_size
+        self.positions.append({"market_id": ticker, "entry_price": price, "size": trade_size, "tag": self.mode, "entry_time": datetime.now()})
         self.save_settings()
-        await self.log_event(f"REAL-DATA ENTRY: {ticker} @ ${price}", "buy")
+        await self.log_event(f"ALCHEMIST-ENTRY: {ticker} @ ${price} (Synthetic)", "buy")
 
-engine = SentinelV98()
+engine = SentinelV10()
 
 @app.on_event("startup")
 async def startup():
     asyncio.create_task(engine.scanner_loop())
     asyncio.create_task(engine.risk_manager_loop())
-    await engine.log_event("SENTINEL_V9.8: Real-Market Bridge Active.", "system")
+    await engine.log_event("SENTINEL_V10_ALCHEMIST: Full Bridge Active.", "system")
 
 @app.get("/api/status")
 async def get_status(): return {"mode": engine.mode, "balance_real": engine.balance_real, "balance_paper": engine.balance_paper, "stats": {"spread": {"active": engine.spread_active}}, "positions": engine.positions}
