@@ -1,27 +1,35 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
-    <meta charset="UTF-8"><title>Kalshi Arb Terminal V9.1</title>
+    <meta charset="UTF-8"><title>Sentinel V9.2 Control</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>tailwind.config = { darkMode: 'class', theme: { extend: { colors: { gray: { 900: '#0f111a', 800: '#1a1d27' }, primary: '#3b82f6', ai: '#8b5cf6' } } } }</script>
+    <script>tailwind.config = { darkMode: 'class', theme: { extend: { colors: { gray: { 900: '#0f111a', 800: '#1a1d27' }, primary: '#3b82f6', ai: '#8b5cf6', live: '#ef4444' } } } }</script>
     <style>
         body { background-color: #0f111a; color: #e2e8f0; font-family: 'Inter', sans-serif; font-size: 11px; }
         .glass-panel { background: rgba(26, 29, 39, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); border-radius: 0.75rem; }
+        .toggle-active { background-color: #3b82f6; color: white; }
     </style>
 </head>
 <body class="p-6 h-screen flex flex-col gap-6 overflow-hidden">
     <header class="flex justify-between items-center mb-2">
-        <h1 class="text-3xl font-bold tracking-tighter uppercase text-white">KALSHI<span class="text-primary">TERMINAL</span> <span class="text-xs text-gray-500 font-normal">V9.1</span></h1>
+        <div class="flex items-center gap-4">
+            <h1 class="text-3xl font-bold tracking-tighter uppercase text-white">KALSHI<span class="text-primary">TERMINAL</span> <span class="text-[10px] text-gray-500 font-normal">V9.2</span></h1>
+            <div class="glass-panel p-1 flex gap-1">
+                <button id="btnPaper" onclick="setMode('PAPER')" class="px-4 py-1 rounded text-[10px] font-bold uppercase transition-all">Paper</button>
+                <button id="btnLive" onclick="setMode('LIVE')" class="px-4 py-1 rounded text-[10px] font-bold uppercase transition-all">Live</button>
+            </div>
+        </div>
         <div class="glass-panel px-6 py-3 flex gap-8 items-center">
             <div class="text-right uppercase font-bold text-[9px] text-gray-500">Real Balance<p id="balanceReal" class="text-xl font-mono text-white mt-1">$25.01</p></div>
             <div class="border-l border-gray-700 pl-8 text-right uppercase font-bold text-[9px] text-primary">Paper Balance<p id="balancePaper" class="text-xl font-mono text-primary mt-1">$10000.00</p></div>
         </div>
     </header>
+
     <div class="grid grid-cols-12 gap-6 flex-1 min-h-0">
         <div class="col-span-3 flex flex-col gap-5">
-            <div class="glass-panel p-5 overflow-hidden">
+            <div class="glass-panel p-5 overflow-hidden border-l-4 border-ai">
                 <h2 class="text-[10px] font-bold text-ai tracking-widest uppercase mb-2">Ollama Risk Chief</h2>
-                <div id="aiAnalysis" class="bg-gray-900 rounded p-3 text-[10px] text-gray-300 font-mono mb-3">Monitoring 1% caps on 10 slots...</div>
+                <div id="aiAnalysis" class="bg-gray-900 rounded p-3 text-[10px] text-gray-300 font-mono italic">Monitoring 1% caps on 10 slots...</div>
             </div>
             <div class="glass-panel p-4 flex-1">
                 <div class="mb-4 bg-gray-800/30 p-4 rounded border border-gray-700/50 flex justify-between items-center">
@@ -30,42 +38,69 @@
                 </div>
             </div>
         </div>
+
         <div class="col-span-6 flex flex-col glass-panel overflow-hidden border border-gray-700/50">
-            <div class="p-3 border-b border-gray-700 bg-slate-900/50 text-[10px] font-bold text-gray-400 uppercase">Active Positions (Max 10 Slots)</div>
+            <div class="p-3 border-b border-gray-700 bg-slate-900/50 text-[10px] font-bold text-gray-400 uppercase flex justify-between">
+                <span>Active Positions (Max 10 Slots)</span>
+                <span id="slotCount" class="text-primary">0/10</span>
+            </div>
             <div id="positionsList" class="p-4 overflow-y-auto space-y-2"></div>
         </div>
+
         <div class="col-span-3 flex flex-col border border-gray-700 glass-panel overflow-hidden">
             <div class="p-3 border-b border-gray-700 bg-gray-800/80 flex justify-between items-center text-[10px] font-bold uppercase text-slate-400">
                 <h2>System Log</h2>
                 <a href="/api/telemetry/download" class="text-primary hover:text-white transition-all">⬇️ DL LOG</a>
             </div>
-            <div id="logFeed" class="p-4 overflow-y-auto font-mono text-[10px] flex flex-col gap-2 flex-1 text-blue-400/80"></div>
+            <div id="logFeed" class="p-4 overflow-y-auto font-mono text-[9px] flex flex-col gap-2 flex-1 text-blue-400/80"></div>
         </div>
     </div>
+
     <script>
         const ws = new WebSocket(`ws://${window.location.host}/ws/logs`);
         ws.onmessage = (e) => {
             const d = JSON.parse(e.data);
             const div = document.createElement('div');
             div.className = "border-b border-white/5 pb-1";
-            div.innerText = `[${new Date().toLocaleTimeString([], {hour12:false})}] ${d.msg}`;
+            div.innerHTML = `<span class="opacity-40">[${d.time}]</span> <span class="text-white">${d.msg}</span>`;
             const f = document.getElementById('logFeed'); f.prepend(div);
         };
+
         async function fetchStatus() {
             const res = await fetch('/api/status');
             const d = await res.json();
-            document.getElementById('balanceReal').innerText = `$${d.balance_kalshi.toFixed(2)}`;
-            document.getElementById('balancePaper').innerText = `$${d.paper_balance.toFixed(2)}`;
+            document.getElementById('balanceReal').innerText = `$${d.balance_real.toFixed(2)}`;
+            document.getElementById('balancePaper').innerText = `$${d.balance_paper.toFixed(2)}`;
+            document.getElementById('slotCount').innerText = `${d.positions.length}/10`;
+            
+            // UI Mode Sync
+            document.getElementById('btnPaper').className = d.mode === 'PAPER' ? 'px-4 py-1 rounded text-[10px] font-bold uppercase toggle-active' : 'px-4 py-1 rounded text-[10px] font-bold uppercase bg-gray-800 text-gray-500';
+            document.getElementById('btnLive').className = d.mode === 'LIVE' ? 'px-4 py-1 rounded text-[10px] font-bold uppercase bg-live text-white' : 'px-4 py-1 rounded text-[10px] font-bold uppercase bg-gray-800 text-gray-500';
+
             document.getElementById('positionsList').innerHTML = d.positions.map(p => `
-                <div class="bg-gray-800/50 p-4 rounded border border-gray-700 flex justify-between items-center">
-                    <div><p class="font-bold text-white">${p.market_id}</p><p class="text-[9px] text-green-400 font-bold uppercase underline underline-offset-8">BUY: Mojtaba Khamenei</p></div>
+                <div class="bg-gray-800/50 p-4 rounded border ${p.tag === 'LIVE' ? 'border-live/40' : 'border-gray-700'} flex justify-between items-center transition-all">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[8px] font-bold px-1 rounded ${p.tag === 'LIVE' ? 'bg-live text-white' : 'bg-primary text-white'}">${p.tag}</span>
+                            <p class="font-bold text-white text-[12px]">${p.market_id}</p>
+                        </div>
+                        <p class="text-[9px] text-green-400 font-bold uppercase mt-1">ENTRY: $${p.entry_price.toFixed(2)}</p>
+                    </div>
                     <div class="text-right font-black text-white text-lg font-mono">$${p.size.toFixed(2)}</div>
                 </div>`).join('');
         }
+
+        async function setMode(m) {
+            let f = new FormData(); f.append('mode', m);
+            await fetch('/toggle_mode', { method: 'POST', body: f });
+            fetchStatus();
+        }
+
         async function toggleStrat(s, a) {
             let f = new FormData(); f.append('strat', s); f.append('active', a);
             await fetch('/toggle', { method: 'POST', body: f });
         }
+
         setInterval(fetchStatus, 2000); fetchStatus();
     </script>
 </body>
