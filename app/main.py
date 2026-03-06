@@ -3,6 +3,10 @@ import base64
 import math
 import os
 import re
+import sys
+import platform
+import socket
+import json
 import uuid
 from collections import deque
 from contextlib import asynccontextmanager
@@ -17,7 +21,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
@@ -178,22 +182,37 @@ class KalshiClient:
         except FileNotFoundError:
             return None
 
+    
     def _sign_headers(self, method: str, path: str) -> Dict[str, str]:
         if not self.trading_enabled:
             raise RuntimeError("Kalshi credentials missing.")
-        timestamp = str(int(datetime.now(timezone.utc).timestamp() * 1000))
+
+        import time
+        timestamp = str(int(time.time() * 1000))
+
+        # Kalshi requires full API path in signature
         path_no_query = path.split("?", 1)[0]
+        if not path_no_query.startswith("/trade-api/"):
+            path_no_query = f"/trade-api/v2{path_no_query}"
+
         message = f"{timestamp}{method.upper()}{path_no_query}".encode("utf-8")
+
         signature = self.private_key.sign(
             message,
-            padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.DIGEST_LENGTH),
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.DIGEST_LENGTH,
+            ),
             hashes.SHA256(),
         )
+
         return {
             "KALSHI-ACCESS-KEY": self.api_key_id,
             "KALSHI-ACCESS-TIMESTAMP": timestamp,
             "KALSHI-ACCESS-SIGNATURE": base64.b64encode(signature).decode("utf-8"),
+            "Content-Type": "application/json",
         }
+
 
     async def get_json(self, session: aiohttp.ClientSession, path: str, auth: bool = False) -> Dict[str, Any]:
         headers: Dict[str, str] = {}
@@ -708,6 +727,52 @@ class TradingBot:
             "logs": list(self.logs),
         }
 
+    def debug_report_text(self) -> str:
+        status = self.dashboard_status()
+        masked_env = {}
+        for key, value in os.environ.items():
+            upper = key.upper()
+            if any(token in upper for token in ["KEY", "SECRET", "TOKEN", "PASSWORD", "PRIVATE"]):
+                if value:
+                    masked_env[key] = f"{value[:4]}...{value[-4:]}" if len(value) > 8 else "***"
+                else:
+                    masked_env[key] = ""
+            elif upper.startswith(("KALSHI_", "PAPER_", "ARM_", "MAX_", "WATCH_", "MODE", "OLLAMA_")):
+                masked_env[key] = value
+
+        report = {
+            "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+            "host": {
+                "hostname": socket.gethostname(),
+                "python": sys.version,
+                "platform": platform.platform(),
+            },
+            "app": {
+                "db_path": str(DB_PATH),
+                "paper_mode": self.paper_mode,
+                "live_armed": self.live_armed,
+                "poll_seconds": self.poll_seconds,
+                "watch_terms": self.watch_terms,
+                "market_count": len(self.market_snapshots),
+                "log_count": len(self.logs),
+            },
+            "credentials": status["credentials"],
+            "health": status["health"],
+            "balances": status["balances"],
+            "spots": status["spots"],
+            "strategies": status["strategies"],
+            "top_markets": status["markets"][:20],
+            "recent_trades": status["recent_trades"][:40],
+            "recent_logs": status["logs"][:150],
+            "env": masked_env,
+        }
+
+        sections = [
+            "=== KALSHI QUANT DESK DEBUG REPORT ===",
+            json.dumps(report, indent=2, default=str),
+        ]
+        return "\n\n".join(sections)
+
     def set_mode(self, mode: str) -> None:
         if mode == "live" and not self.live_armed:
             raise HTTPException(status_code=400, detail="Live trading is not armed.")
@@ -839,6 +904,14 @@ async def api_arm_live(payload: ArmLiveUpdate):
 async def api_strategy(name: str, payload: StrategyUpdate):
     bot.update_strategy(name, payload)
     return {"ok": True, "strategy": name}
+
+
+@app.get("/api/debug-report", response_class=PlainTextResponse)
+async def api_debug_report():
+    return PlainTextResponse(
+        bot.debug_report_text(),
+        headers={"Content-Disposition": f'attachment; filename="kalshi-debug-report-{datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")}.txt"'},
+    )
 
 
 @app.get("/api/trades")
