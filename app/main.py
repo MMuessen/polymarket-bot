@@ -7,7 +7,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from dotenv import load_dotenv
 
-# Persistence Logic: Load secrets from local Dell server .env
+# Persistence for Dell Server
 ENV_FILE = ".env"
 if os.path.exists(ENV_FILE):
     load_dotenv(ENV_FILE)
@@ -23,11 +23,10 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 class SentinelV10_Full:
     def __init__(self):
         self.load_settings()
-        self.balance_real = 25.01 
         self.max_slots = 10
         self.positions = []
         self.conns = []
-        # Key management
+        # Key management from .env
         self.api_key = os.getenv("KALSHI_API_KEY", "")
         self.priv_key_raw = os.getenv("KALSHI_PRIVATE_KEY", "")
 
@@ -36,29 +35,34 @@ class SentinelV10_Full:
             with open(SETTINGS_FILE, "r") as f:
                 saved = json.load(f)
                 self.mode = saved.get("mode", "PAPER")
-                self.spread_active = saved.get("spread_active", True)
                 self.balance_paper = saved.get("balance_paper", 10286.00)
-        else: self.mode, self.spread_active, self.balance_paper = "PAPER", True, 10286.00
+                self.spread_active = saved.get("spread_active", True)
+        else:
+            self.mode, self.balance_paper, self.spread_active = "PAPER", 10286.00, True
 
     def save_settings(self):
         with open(SETTINGS_FILE, "w") as f:
-            json.dump({"mode": self.mode, "spread_active": self.spread_active, "balance_paper": self.balance_paper}, f)
+            json.dump({
+                "mode": self.mode, 
+                "balance_paper": self.balance_paper, 
+                "spread_active": self.spread_active
+            }, f)
 
     def save_secrets(self, key_id, priv_key):
         with open(ENV_FILE, "w") as f:
             f.write(f"KALSHI_API_KEY={key_id}\n")
+            # Preserve newlines in RSA key
             f.write(f"KALSHI_PRIVATE_KEY=\"{priv_key}\"\n")
         load_dotenv(ENV_FILE, override=True)
-        self.api_key, self.priv_key_raw = key_id, priv_key
+        self.api_key = key_id
+        self.priv_key_raw = priv_key
         return True
 
     async def get_market_data(self, ticker):
-        """High-Fidelity Order Book Bridge"""
         async with httpx.AsyncClient() as client:
             try:
                 res = await client.get(f"{KALSHI_API}/markets/{ticker}/orderbook")
                 d = res.json().get('orderbook', {})
-                # Synthetic Ask calculation: 100 - Best NO Bid
                 return {
                     "bid": d.get('yes', [[0,0]])[-1][0], 
                     "ask": 100 - d.get('no', [[0,0]])[-1][0], 
@@ -67,30 +71,26 @@ class SentinelV10_Full:
             except: return None
 
     async def risk_manager_loop(self):
-        """Avellaneda-Stoikov Inventory Management"""
+        """Avellaneda-Stoikov Inventory Skew Logic"""
         while True:
-            # Skew targets: As slots fill, we lower our exit threshold to dump risk
             skew = 0.05 - ((len(self.positions)/self.max_slots) * 0.03)
             for i, pos in enumerate(self.positions):
                 m = await self.get_market_data(pos['market_id'])
                 if m and m['bid'] >= (pos['entry_price'] + (skew * 100)):
-                    # Realistic Fee deduction (~3.5%)
                     profit = (pos['size'] * ((m['bid'] - pos['entry_price'])/100)) * 0.965
                     self.balance_paper += (pos['size'] + profit)
                     self.positions.pop(i)
                     self.save_settings()
-                    await self.log_event(f"SKEW-EXIT: {pos['market_id']} | Captured Spread: {skew*100:.1f}¢", "sell")
+                    await self.log_event(f"EXIT: {pos['market_id']} | Net: ${profit:.2f}", "sell")
                     break
             await asyncio.sleep(5)
 
     async def scanner_loop(self):
-        """Continuous Market Scanning"""
-        tickers = ["KXNASDAQ100-26MAR26-B18500", "KXFED-26MAR26-B5.25", "KXBTC-26MAR26-T75000"]
+        tickers = ["KXNASDAQ100-26MAR26-B18500", "KXFED-26MAR26-B5.25"]
         while True:
             if self.spread_active and len(self.positions) < self.max_slots:
                 ticker = random.choice(tickers)
                 m = await self.get_market_data(ticker)
-                # Liquidity Filter: Only 'fill' if real depth exists
                 if m and m['liq'] > 100:
                     await self.execute_trade(ticker, m['ask'])
             await asyncio.sleep(15)
@@ -99,10 +99,10 @@ class SentinelV10_Full:
         self.balance_paper -= 100.00
         self.positions.append({
             "market_id": ticker, "entry_price": price, 
-            "size": 100.00, "tag": self.mode, "entry_time": datetime.now().isoformat()
+            "size": 100.00, "tag": self.mode, "time": datetime.now().strftime("%H:%M:%S")
         })
         self.save_settings()
-        await self.log_event(f"[{self.mode}] ENTRY: {ticker} @ ${price} (Liquidity: Verified)", "buy")
+        await self.log_event(f"ENTRY: {ticker} @ ${price}", "buy")
 
     async def log_event(self, msg, strategy="sys"):
         t = datetime.now().strftime("%H:%M:%S")
@@ -120,26 +120,28 @@ async def startup():
 @app.get("/api/status")
 async def get_status():
     return {
-        "balance_paper": engine.balance_paper, 
-        "stats": {"spread": {"active": engine.spread_active}},
-        "positions": engine.positions, 
-        "vault_loaded": bool(engine.api_key)
+        "mode": engine.mode,
+        "balance": engine.balance_paper, 
+        "vault_ready": bool(engine.api_key),
+        "positions": engine.positions,
+        "active": engine.spread_active
     }
+
+@app.post("/api/set_mode")
+async def set_mode(mode: str = Form(...)):
+    engine.mode = mode
+    engine.save_settings()
+    await engine.log_event(f"SYSTEM: Switched to {mode} mode.", "system")
+    return {"status": "success"}
 
 @app.post("/save_secrets")
 async def save_secrets(api_key: str = Form(...), priv_key: str = Form(...)):
     engine.save_secrets(api_key, priv_key)
-    await engine.log_event("VAULT: RSA Keys Saved & Bridged.", "system")
-    return {"status": "success"}
-
-@app.post("/toggle")
-async def toggle(strat: str = Form(...), active: str = Form(...)):
-    engine.spread_active = (active.lower() == 'true')
-    engine.save_settings()
+    await engine.log_event("VAULT: RSA Keys Initialized.", "system")
     return {"status": "success"}
 
 @app.get("/")
-async def index(request: Request): 
+async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 @app.websocket("/ws/logs")
