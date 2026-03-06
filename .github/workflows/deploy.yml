@@ -10,8 +10,10 @@ jobs:
       - name: Checkout latest code
         uses: actions/checkout@v3
 
-      - name: Deploy Update
+      - name: Rapid Hot-Reload
         run: |
           cd /home/agent/polymarket-bot
-          # Modern command: no hyphen in compose, -d is after the 'up' verb
-          sudo docker-compose up -d --build
+          # REMOVED HYPHEN: 'docker compose' (with a space) is the modern engine 
+          # that fixes the 'ContainerConfig' error
+          sudo docker compose up -d --build --force-recreate
+          sudo docker image prune -f
