@@ -11,26 +11,24 @@
 </head>
 <body class="p-8">
     <header class="flex justify-between items-center mb-8">
-        <h1 class="text-3xl font-bold tracking-tighter">KALSHI<span class="text-blue-500">TERMINAL</span> <span class="text-xs text-gray-500">V10.2</span></h1>
-        <div class="flex gap-6">
-            <div class="text-right">
-                <p class="text-xs text-blue-500 uppercase">Paper Balance</p>
-                <p id="balancePaper" class="text-2xl font-bold text-blue-400">$0.00</p>
-            </div>
+        <h1 class="text-3xl font-bold tracking-tighter italic">KALSHI<span class="text-blue-500">TERMINAL</span> <span class="text-xs text-gray-500">V10.2</span></h1>
+        <div class="text-right">
+            <p class="text-xs text-blue-500 uppercase">Live Paper Balance</p>
+            <p id="balancePaper" class="text-2xl font-bold text-blue-400">$0.00</p>
         </div>
     </header>
 
     <div class="grid grid-cols-12 gap-6">
         <div class="col-span-3 space-y-6">
-            <div class="card p-4 rounded-xl">
+            <div class="card p-4 rounded-xl border-red-900 shadow-2xl">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-xs font-bold text-red-500 uppercase">API Vault</h3>
-                    <span id="vault_status" class="text-[10px] bg-red-900 px-2 py-1 rounded text-red-400">NO KEYS</span>
+                    <span id="vault_status" class="text-[10px] bg-red-900 px-2 py-1 rounded text-red-200">NO KEYS</span>
                 </div>
                 <div class="space-y-3">
                     <input type="password" id="api_key_id" placeholder="Kalshi Key ID" class="w-full p-2 bg-gray-900 border border-gray-700 rounded text-xs">
-                    <textarea id="priv_key_body" placeholder="Paste Private Key (.pem content)" class="w-full p-2 bg-gray-900 border border-gray-700 rounded text-xs h-20"></textarea>
-                    <button onclick="saveSecrets()" class="w-full bg-red-600 hover:bg-red-700 p-2 rounded font-bold text-xs transition">Save & Lock</button>
+                    <textarea id="priv_key_body" placeholder="Paste Private Key content" class="w-full p-2 bg-gray-900 border border-gray-700 rounded text-xs h-20"></textarea>
+                    <button onclick="saveSecrets()" class="w-full bg-red-600 hover:bg-red-700 p-2 rounded font-bold text-xs transition">Save & Initialize</button>
                 </div>
             </div>
             <div class="card p-4 rounded-xl">
@@ -53,20 +51,17 @@
         async function fetchStatus() {
             const res = await fetch('/api/status');
             const d = await res.json();
-            
             document.getElementById('balancePaper').innerText = `$${d.balance_paper.toFixed(2)}`;
             document.getElementById('strat_spread').checked = d.stats.spread.active;
-            
             const vStatus = document.getElementById('vault_status');
             if (d.vault_loaded) {
                 vStatus.innerText = "KEYS LOADED";
                 vStatus.className = "text-[10px] bg-green-900 px-2 py-1 rounded text-green-400";
             }
-
             const list = document.getElementById('positionsList');
             list.innerHTML = d.positions.map(p => `
-                <div class="p-3 border border-gray-700 rounded flex justify-between items-center">
-                    <div class="text-xs uppercase font-bold text-gray-500">${p.market_id}</div>
+                <div class="p-3 border border-gray-700 rounded flex justify-between items-center bg-gray-800">
+                    <div class="text-xs uppercase font-bold text-gray-400">${p.market_id}</div>
                     <div class="text-green-400 font-bold">$${p.size}</div>
                 </div>`).join('');
         }
@@ -76,13 +71,12 @@
             formData.append('api_key', document.getElementById('api_key_id').value);
             formData.append('priv_key', document.getElementById('priv_key_body').value);
             await fetch('/save_secrets', { method: 'POST', body: formData });
-            alert("Vault Updated.");
+            alert("Vault Locked.");
         }
 
         async function toggleStrat(name, active) {
             const formData = new FormData();
-            formData.append('strat', name);
-            formData.append('active', active);
+            formData.append('strat', name); formData.append('active', active);
             await fetch('/toggle', { method: 'POST', body: formData });
         }
 
@@ -90,7 +84,7 @@
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
             const logDiv = document.getElementById('logs');
-            logDiv.innerHTML = `<div class="p-2 bg-gray-800 rounded mb-2 text-xs">[${data.time}] ${data.msg}</div>` + logDiv.innerHTML;
+            logDiv.innerHTML = `<div class="p-2 bg-gray-800 rounded mb-2 text-xs border-l-2 border-blue-500">[${data.time}] ${data.msg}</div>` + logDiv.innerHTML;
         };
 
         setInterval(fetchStatus, 3000);
