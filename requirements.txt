@@ -11,3 +11,4 @@ jinja2
 python-multipart
 feedparser
 kalshi_python_async
+cryptography  # Add this for RSA Key authentication
