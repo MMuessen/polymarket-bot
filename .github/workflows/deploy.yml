@@ -10,8 +10,8 @@ jobs:
       - name: Checkout latest code
         uses: actions/checkout@v3
 
-      - name: Rebuild and Restart Sentinel V9.1
+      - name: Rapid Hot-Reload
         run: |
           cd /home/agent/polymarket-bot
-          docker-compose down
-          docker-compose up -d --build
+          # Build in the background first, then swap instantly
+          sudo docker-compose up -d --build --remove-orphans
