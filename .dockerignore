@@ -1,5 +1,6 @@
-ollama_data/
-data/
-venv/
+actions-runner/
 .git/
-*.pem
+.github/
+ollama_data/
+__pycache__/
+*.log
