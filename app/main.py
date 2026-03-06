@@ -11,10 +11,10 @@ LOG_FILE = "trading_session.log"
 class SentinelV9:
     def __init__(self):
         self.paper_mode = True
-        self.balance_kalshi = 25.01 # Baseline
+        self.balance_kalshi = 25.01 #
         self.paper_balance = 10000.00
-        self.max_slots = 10
-        self.risk_per_slot = 0.01 # 1% Guardrail
+        self.max_slots = 10 # 
+        self.risk_per_slot = 0.01 # 1% [cite: 26, 28]
         self.stats = {
             "spread": {"trades_today": 0, "win_rate": 0.0, "pnl": 0.0, "active": False},
             "weather": {"trades_today": 0, "win_rate": 0.0, "pnl": 0.0, "active": False}
@@ -40,7 +40,7 @@ async def spread_scanner():
     while True:
         if engine.stats["spread"]["active"]:
             await engine.log_event("SCANNING: Analyzing bid/ask depth for 1% spread capture...", "spread")
-            # Simulation: Find a gap, place a paper trade
+            # Logic simulation for paper trading [cite: 43]
             if random.random() > 0.8:
                 trade_size = engine.balance_kalshi * engine.risk_per_slot
                 engine.positions.append({"market_id": "SCAN-FOUND-MKTR", "side": "YES", "entry_price": 0.72, "size": trade_size})
