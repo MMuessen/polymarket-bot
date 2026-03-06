@@ -1,151 +1,159 @@
+cat > app/templates/index.html << 'EOF'
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Sentinel V10.2 | Unified Command</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentinel V10.2 - Paper Trading Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { background: #0b0d14; color: #f8fafc; font-family: 'Inter', sans-serif; }
-        .glass { background: rgba(22, 25, 38, 0.8); border: 1px solid rgba(255, 255, 255, 0.05); backdrop-filter: blur(12px); }
-        .vault-card { border: 1px solid rgba(239, 68, 68, 0.2); background: linear-gradient(145deg, #161926, #0f111a); }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
-    </style>
+    <link rel="stylesheet" href="/static/style.css">
+    <script>
+        let botData = {};
+        async function updateDashboard() {
+            const res = await fetch('/api/status');
+            botData = await res.json();
+
+            // Paper Mode Indicator
+            const modeEl = document.getElementById('paper-mode');
+            modeEl.textContent = botData.paper_mode ? 'PAPER MODE (SAFE - SIMULATED TRADES)' : 'LIVE MODE (REAL MONEY)';
+            modeEl.className = botData.paper_mode 
+                ? 'text-green-400 font-bold text-xl' 
+                : 'text-red-500 font-bold text-xl';
+
+            // Balances
+            document.getElementById('kalshi-balance').textContent = botData.balance_kalshi.toFixed(2);
+            document.getElementById('poly-balance').textContent = botData.balance_poly.toFixed(2);
+
+            // Strategies Table
+            const tbody = document.getElementById('strat-table');
+            tbody.innerHTML = '';
+            Object.entries(botData.strats).forEach(([name, data]) => {
+                const winRate = data.perf.trades > 0 
+                    ? ((data.perf.wins / data.perf.trades) * 100).toFixed(1) 
+                    : '0.0';
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-800';
+                row.innerHTML = `
+                    <td class="px-6 py-4">${name}</td>
+                    <td class="px-6 py-4">${winRate}% (${data.perf.wins}/${data.perf.trades})</td>
+                    <td class="px-6 py-4">$${data.perf.pnl.toFixed(2)}</td>
+                    <td class="px-6 py-4 text-green-400">$${((botData.balance_kalshi || 100) * 0.01).toFixed(2)}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        setInterval(updateDashboard, 2000);
+        window.onload = updateDashboard;
+    </script>
 </head>
-<body class="p-8">
-    <header class="flex justify-between items-center mb-10 border-b border-slate-800 pb-8">
-        <div class="flex items-center gap-8">
-            <div>
-                <h1 class="text-5xl font-black italic tracking-tighter text-white">SENTINEL<span class="text-blue-500">V10.2</span></h1>
-                <div class="flex bg-[#1c2033] rounded-2xl p-1 border border-slate-700 mt-3 w-fit shadow-inner">
-                    <button onclick="setMode('PAPER')" id="modePaper" class="px-6 py-2 rounded-xl text-xs font-black transition-all">PAPER</button>
-                    <button onclick="setMode('LIVE')" id="modeLive" class="px-6 py-2 rounded-xl text-xs font-black transition-all">LIVE</button>
-                </div>
-            </div>
+<body class="bg-zinc-950 text-white font-sans">
+    <div class="max-w-6xl mx-auto p-8">
+        <div class="flex items-center justify-between mb-8">
+            <h1 class="text-4xl font-bold flex items-center gap-3">
+                🚀 Sentinel V10.2
+                <span class="text-emerald-400 text-sm font-mono">Paper Trading Active</span>
+            </h1>
+            <div id="paper-mode" class="text-green-400 font-bold text-xl"></div>
         </div>
 
-        <div class="flex gap-12">
-            <div class="text-right border-r border-slate-800 pr-12">
-                <p class="text-[10px] text-blue-500 font-black uppercase tracking-widest mb-1">Paper Account</p>
-                <p id="balPaper" class="text-4xl font-mono font-bold text-slate-500 tracking-tighter">$0.00</p>
-            </div>
-            <div class="text-right">
-                <p class="text-[10px] text-green-500 font-black uppercase tracking-widest mb-1">Live Kalshi Wallet</p>
-                <p id="balReal" class="text-4xl font-mono font-bold text-white tracking-tighter">$0.00</p>
-            </div>
-        </div>
-    </header>
+        <!-- Controls -->
+        <div class="bg-zinc-900 rounded-2xl p-8 mb-8">
+            <h2 class="text-2xl mb-6 font-semibold">Controls</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Mode Switch -->
+                <div>
+                    <label class="block text-sm mb-2">Trading Mode</label>
+                    <form action="/set_mode" method="post" class="flex gap-3">
+                        <select name="mode" class="bg-zinc-800 text-white px-4 py-3 rounded-xl flex-1">
+                            <option value="kalshi">Kalshi Only</option>
+                            <option value="both">Both (Kalshi + Poly)</option>
+                        </select>
+                        <button type="submit" class="bg-emerald-500 hover:bg-emerald-600 px-8 py-3 rounded-xl font-medium">Set Mode</button>
+                    </form>
+                </div>
 
-    <div class="grid grid-cols-12 gap-10">
-        <div class="col-span-3 space-y-6">
-            <div class="vault-card p-8 rounded-[2.5rem] shadow-2xl">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-[11px] font-black text-red-500 uppercase tracking-[0.2em]">RSA Security Vault</h3>
-                    <div id="vaultStatus" class="w-2 h-2 rounded-full bg-red-600 shadow-[0_0_10px_red]"></div>
+                <!-- Paper Toggle -->
+                <div>
+                    <label class="block text-sm mb-2">Paper Mode</label>
+                    <form action="/toggle_paper" method="post" class="flex gap-3">
+                        <input type="hidden" name="paper" value="true">
+                        <button type="submit" class="bg-zinc-800 hover:bg-zinc-700 px-8 py-3 rounded-xl font-medium flex-1">Enable Paper</button>
+                    </form>
                 </div>
-                <div class="space-y-4">
-                    <input type="password" id="key_id" placeholder="API Key ID" class="w-full bg-black/50 border border-slate-800 p-4 rounded-2xl text-xs text-white outline-none focus:border-red-500 transition-all">
-                    <textarea id="priv_key" placeholder="-----BEGIN RSA PRIVATE KEY-----" class="w-full bg-black/50 border border-slate-800 p-4 rounded-2xl h-44 text-[10px] font-mono text-white outline-none focus:border-red-500 transition-all"></textarea>
-                    <button onclick="saveVault()" class="w-full bg-red-600 hover:bg-red-500 py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-white shadow-lg transition-all active:scale-95">Link Kalshi Bridge</button>
-                </div>
-            </div>
-            
-            <div class="glass p-6 rounded-[2rem]">
-                <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">GenAI Conviction</h3>
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-bold text-white">LLM Status:</span>
-                    <span class="text-[10px] text-blue-400 font-black px-2 py-1 bg-blue-900/20 rounded">GROK-V1 READY</span>
-                </div>
-            </div>
-        </div>
 
-        <div class="col-span-5 glass p-8 rounded-[2.5rem]">
-            <div class="flex justify-between items-center mb-8">
-                <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-widest">Active Inventory</h3>
-                <span id="posCount" class="text-[10px] font-mono text-blue-400 bg-blue-900/30 px-3 py-1 rounded-full border border-blue-500/20">0 SLOTS</span>
-            </div>
-            <div id="positions" class="grid gap-4 h-[600px] overflow-y-auto pr-2">
-                </div>
-        </div>
-
-        <div class="col-span-4 space-y-6">
-            <div class="glass p-8 rounded-[2.5rem] h-[720px] flex flex-col">
-                <h3 class="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-6">Engine Output</h3>
-                <div id="logs" class="flex-1 overflow-y-auto space-y-3 pr-2 scroll-smooth">
+                <!-- Strategy Toggles -->
+                <div>
+                    <label class="block text-sm mb-2">Strategies</label>
+                    <div class="flex gap-3">
+                        <form action="/toggle" method="post" class="flex-1">
+                            <input type="hidden" name="strat" value="sentiment">
+                            <input type="hidden" name="live" value="true">
+                            <button type="submit" class="bg-zinc-800 hover:bg-zinc-700 px-6 py-3 rounded-xl w-full">Sentiment LIVE</button>
+                        </form>
+                        <form action="/toggle" method="post" class="flex-1">
+                            <input type="hidden" name="strat" value="crypto_lag">
+                            <input type="hidden" name="live" value="true">
+                            <button type="submit" class="bg-zinc-800 hover:bg-zinc-700 px-6 py-3 rounded-xl w-full">Crypto Lag LIVE</button>
+                        </form>
                     </div>
+                </div>
             </div>
+        </div>
+
+        <!-- Finances -->
+        <div class="bg-zinc-900 rounded-2xl p-8 mb-8">
+            <h2 class="text-2xl mb-6 font-semibold">Finances</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div class="bg-zinc-800 rounded-xl p-6">
+                    <div class="text-zinc-400 text-sm">Kalshi Balance</div>
+                    <div id="kalshi-balance" class="text-4xl font-mono text-emerald-400">$100.00</div>
+                </div>
+                <div class="bg-zinc-800 rounded-xl p-6">
+                    <div class="text-zinc-400 text-sm">Polymarket Balance</div>
+                    <div id="poly-balance" class="text-4xl font-mono text-zinc-400">$0.00 (Not Connected)</div>
+                </div>
+                <div class="bg-zinc-800 rounded-xl p-6">
+                    <div class="text-zinc-400 text-sm">Lifetime Deposits</div>
+                    <div class="text-4xl font-mono">$0.00</div>
+                </div>
+                <div class="bg-zinc-800 rounded-xl p-6">
+                    <div class="text-zinc-400 text-sm">Lifetime Withdraws</div>
+                    <div class="text-4xl font-mono">$0.00</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Strategies -->
+        <div class="bg-zinc-900 rounded-2xl p-8 mb-8">
+            <h2 class="text-2xl mb-6 font-semibold">Strategies (Live Performance)</h2>
+            <table class="w-full text-left">
+                <thead>
+                    <tr class="border-b border-zinc-700">
+                        <th class="py-4 px-6">Strategy</th>
+                        <th class="py-4 px-6">Win Rate</th>
+                        <th class="py-4 px-6">Total PNL</th>
+                        <th class="py-4 px-6">Recommended Bet</th>
+                    </tr>
+                </thead>
+                <tbody id="strat-table" class="text-zinc-300"></tbody>
+            </table>
+        </div>
+
+        <!-- Status -->
+        <div class="bg-zinc-900 rounded-2xl p-8">
+            <h2 class="text-2xl mb-4 font-semibold">Live Status</h2>
+            <pre id="raw-status" class="bg-black p-6 rounded-xl text-xs overflow-auto h-64 font-mono text-emerald-300"></pre>
         </div>
     </div>
 
     <script>
-        async function setMode(m) {
-            const fd = new FormData(); fd.append('mode', m);
-            await fetch('/api/set_mode', { method: 'POST', body: fd });
-            updateUI();
-        }
-
-        async function saveVault() {
-            const fd = new FormData();
-            fd.append('api_key', document.getElementById('key_id').value);
-            fd.append('priv_key', document.getElementById('priv_key').value);
-            const res = await fetch('/save_secrets', { method: 'POST', body: fd });
-            if(res.ok) { alert("RSA Bridge Secured."); location.reload(); }
-        }
-
-        async function updateUI() {
+        setInterval(async () => {
             const res = await fetch('/api/status');
-            const d = await res.json();
-            
-            document.getElementById('balPaper').innerText = `$${d.balance_paper.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-            document.getElementById('balReal').innerText = `$${d.balance_real.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-            
-            const pBtn = document.getElementById('modePaper');
-            const lBtn = document.getElementById('modeLive');
-            if(d.mode === 'PAPER') {
-                pBtn.className = "px-6 py-2 rounded-xl text-xs font-black bg-blue-600 text-white shadow-lg";
-                lBtn.className = "px-6 py-2 rounded-xl text-xs font-black text-slate-500 hover:text-slate-300";
-            } else {
-                lBtn.className = "px-6 py-2 rounded-xl text-xs font-black bg-red-600 text-white shadow-lg";
-                pBtn.className = "px-6 py-2 rounded-xl text-xs font-black text-slate-500 hover:text-slate-300";
-            }
-
-            if(d.vault_ready) {
-                document.getElementById('vaultStatus').className = "w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_#22c55e]";
-            }
-
-            const activePositions = d.mode === 'LIVE' ? d.live_positions : d.paper_positions;
-            document.getElementById('posCount').innerText = `${activePositions.length} SLOTS`;
-            document.getElementById('positions').innerHTML = activePositions.map(p => `
-                <div class="p-5 bg-black/40 border border-slate-800 rounded-3xl flex justify-between items-center group hover:border-blue-500/50 transition-all duration-300">
-                    <div>
-                        <p class="text-[10px] font-black text-slate-600 uppercase mb-1">${p.ticker || p.market_id}</p>
-                        <div class="flex items-center gap-3">
-                            <span class="text-xl font-mono font-bold text-white">$${(p.entry_price || 0.50).toFixed(2)}</span>
-                            <span class="text-[9px] bg-slate-800 px-2 py-0.5 rounded text-slate-400 font-bold uppercase">Buy</span>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-2xl font-mono font-black text-blue-500">$${(p.position_size || 0).toFixed(2)}</p>
-                        <p class="text-[9px] text-slate-600 font-bold">Qty: ${p.count || 0}</p>
-                    </div>
-                </div>`).join('');
-        }
-
-        const ws = new WebSocket(`ws://${window.location.host}/ws/logs`);
-        ws.onmessage = (e) => {
-            const data = JSON.parse(e.data);
-            const logs = document.getElementById('logs');
-            const color = data.type === 'buy' ? 'border-green-500' : (data.type === 'sell' ? 'border-red-500' : 'border-blue-500');
-            logs.innerHTML = `<div class="p-4 border-l-2 ${color} bg-slate-900/30 rounded-r-2xl mb-3 shadow-sm">
-                <div class="flex justify-between items-center mb-1">
-                    <span class="text-slate-600 text-[9px] font-bold uppercase tracking-widest">${data.time}</span>
-                    <span class="text-[9px] font-black text-blue-500 uppercase">${data.type}</span>
-                </div>
-                <div class="text-slate-200 text-[11px] leading-relaxed font-medium">${data.msg}</div>
-            </div>` + logs.innerHTML;
-        };
-
-        setInterval(updateUI, 5000); updateUI();
+            const data = await res.json();
+            document.getElementById('raw-status').textContent = JSON.stringify(data, null, 2);
+        }, 2000);
     </script>
 </body>
 </html>
+EOF
