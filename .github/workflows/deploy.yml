@@ -1,0 +1,17 @@
+name: Sentinel Auto-Deploy
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout latest code
+        uses: actions/checkout@v3
+
+      - name: Rebuild and Restart Sentinel V9.1
+        run: |
+          cd /home/agent/polymarket-bot
+          docker-compose down
+          docker-compose up -d --build
