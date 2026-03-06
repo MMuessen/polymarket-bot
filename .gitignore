@@ -1,0 +1,5 @@
+ollama_data/
+trading_session.log
+__pycache__/
+*.pyc
+.env

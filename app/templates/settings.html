@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html class="dark">
+<head><title>Sentinel | Settings</title><script src="https://cdn.tailwindcss.com"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet"></head>
+<body class="bg-[#05070a] text-slate-300 font-mono text-[12px] h-screen flex">
+    <nav class="w-16 border-r border-slate-800 bg-[#0d1117] flex flex-col items-center py-8 space-y-10 shrink-0">
+        <a href="/" class="text-slate-600 hover:text-white"><i class="fas fa-chart-line"></i></a>
+        <a href="/paper" class="text-slate-600 hover:text-white"><i class="fas fa-flask"></i></a>
+        <a href="/settings" class="text-blue-400 bg-blue-500/10 p-2 rounded border border-blue-500/30 shadow-lg"><i class="fas fa-sliders-h"></i></a>
+    </nav>
+    <div class="flex-1 p-16 max-w-3xl overflow-y-auto">
+        <h1 class="text-2xl font-black text-white mb-10 uppercase tracking-widest border-b border-slate-800 pb-6">Global System Configuration</h1>
+        <form action="/api/update_risk" method="POST" class="grid grid-cols-2 gap-8 bg-[#0d1117] p-10 border border-slate-800 rounded-2xl shadow-2xl">
+            <div class="col-span-2"><h3 class="text-[10px] text-blue-500 font-bold uppercase mb-4">Risk Management</h3></div>
+            <div>
+                <label class="block text-[9px] uppercase font-bold text-slate-500 mb-3">Max Ticket Size ($)</label>
+                <input name="max_trade" type="number" step="0.01" value="10.00" class="w-full bg-black border border-slate-800 p-4 rounded text-white focus:border-blue-500 outline-none font-bold text-sm">
+            </div>
+            <div>
+                <label class="block text-[9px] uppercase font-bold text-slate-500 mb-3">Stop Loss Threshold (%)</label>
+                <input name="stop_loss" type="number" step="0.001" value="0.05" class="w-full bg-black border border-slate-800 p-4 rounded text-white focus:border-blue-500 outline-none font-bold text-sm">
+            </div>
+            <div class="col-span-2 pt-6"><button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-xl font-black text-white text-[11px] uppercase transition-all shadow-lg shadow-blue-900/30">Commit Risk Parameters</button></div>
+        </form>
+    </div>
+</body>
+</html>

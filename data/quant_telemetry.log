@@ -1,0 +1,421 @@
+
+--- KALSHI TERMINAL BOOT (2026-03-05 22:34:01.906823) ---
+[22:34:02] [HEARTBEAT] {"mode": "PAPER", "bankroll": 1000.0, "risk_setting": "5.0%", "ai_spread_target": 0.04, "open_positions": 0}
+[22:35:02] [HEARTBEAT] {"mode": "PAPER", "bankroll": 1000.0, "risk_setting": "5.0%", "ai_spread_target": 0.04, "open_positions": 0}
+[22:36:02] [HEARTBEAT] {"mode": "PAPER", "bankroll": 1000.0, "risk_setting": "5.0%", "ai_spread_target": 0.04, "open_positions": 0}
+
+--- KALSHI TERMINAL BOOT (2026-03-05 22:36:29.907391) ---
+[22:36:30] [HEARTBEAT] {"mode": "PAPER", "bankroll": 1000.0, "risk_setting": "5.0%", "ai_spread_target": 0.04, "open_positions": 0}
+[22:37:30] [HEARTBEAT] {"mode": "PAPER", "bankroll": 1000.0, "risk_setting": "5.0%", "ai_spread_target": 0.04, "open_positions": 0}
+[22:38:30] [HEARTBEAT] {"mode": "PAPER", "bankroll": 1000.0, "risk_setting": "5.0%", "ai_spread_target": 0.04, "open_positions": 0}
+
+--- KALSHI TERMINAL BOOT (2026-03-05 22:39:15.667845) ---
+[22:39:15] [HEARTBEAT] {"mode": "PAPER", "bankroll": 1000.0, "ai_spread_target": 0.04, "open_positions": 0, "cached_markets": 0}
+[22:39:15] [WEATHER_SCAN] {"station": "KNYC", "current_f": 39.0}
+[22:39:17] [WEATHER_SCAN] {"station": "KDFW", "current_f": 80.6}
+[22:39:20] [WEATHER_SCAN] {"station": "KORD", "current_f": 48.2}
+[22:39:22] [WEATHER_SCAN] {"station": "KMIA", "current_f": 78.8}
+[22:39:24] [WEATHER_SCAN] {"station": "KAUS", "current_f": 84.2}
+[22:40:15] [HEARTBEAT] {"mode": "PAPER", "bankroll": 1000.0, "ai_spread_target": 0.04, "open_positions": 0, "cached_markets": 100}
+[22:40:26] [WEATHER_SCAN] {"station": "KNYC", "current_f": 39.0}
+[22:40:28] [WEATHER_SCAN] {"station": "KDFW", "current_f": 80.6}
+[22:40:30] [WEATHER_SCAN] {"station": "KORD", "current_f": 48.2}
+[22:40:32] [WEATHER_SCAN] {"station": "KMIA", "current_f": 78.8}
+[22:40:34] [WEATHER_SCAN] {"station": "KAUS", "current_f": 84.2}
+[22:41:15] [HEARTBEAT] {"mode": "PAPER", "bankroll": 1000.0, "ai_spread_target": 0.04, "open_positions": 0, "cached_markets": 100}
+[22:41:36] [WEATHER_SCAN] {"station": "KNYC", "current_f": 39.0}
+[22:41:38] [WEATHER_SCAN] {"station": "KDFW", "current_f": 80.6}
+[22:41:40] [WEATHER_SCAN] {"station": "KORD", "current_f": 48.2}
+[22:41:42] [WEATHER_SCAN] {"station": "KMIA", "current_f": 78.8}
+[22:41:44] [WEATHER_SCAN] {"station": "KAUS", "current_f": 84.2}
+[22:42:15] [HEARTBEAT] {"mode": "PAPER", "bankroll": 1000.0, "ai_spread_target": 0.04, "open_positions": 0, "cached_markets": 100}
+[22:42:46] [WEATHER_SCAN] {"station": "KNYC", "current_f": 39.0}
+[22:42:48] [WEATHER_SCAN] {"station": "KDFW", "current_f": 80.6}
+[22:42:50] [WEATHER_SCAN] {"station": "KORD", "current_f": 48.2}
+[22:42:52] [WEATHER_SCAN] {"station": "KMIA", "current_f": 78.8}
+[22:42:54] [WEATHER_SCAN] {"station": "KAUS", "current_f": 84.2}
+[22:43:15] [HEARTBEAT] {"mode": "PAPER", "bankroll": 1000.0, "ai_spread_target": 0.04, "open_positions": 0, "cached_markets": 100}
+[22:43:56] [WEATHER_SCAN] {"station": "KNYC", "current_f": 39.0}
+[22:43:59] [WEATHER_SCAN] {"station": "KDFW", "current_f": 80.6}
+[22:44:01] [WEATHER_SCAN] {"station": "KORD", "current_f": 48.2}
+[22:44:03] [WEATHER_SCAN] {"station": "KMIA", "current_f": 78.8}
+[22:44:05] [WEATHER_SCAN] {"station": "KAUS", "current_f": 84.2}
+[22:44:15] [HEARTBEAT] {"mode": "PAPER", "bankroll": 1000.0, "ai_spread_target": 0.04, "open_positions": 0, "cached_markets": 100}
+[22:45:07] [WEATHER_SCAN] {"station": "KNYC", "current_f": 39.0}
+[22:45:09] [WEATHER_SCAN] {"station": "KDFW", "current_f": 80.6}
+[22:45:11] [WEATHER_SCAN] {"station": "KORD", "current_f": 48.2}
+[22:45:13] [WEATHER_SCAN] {"station": "KMIA", "current_f": 78.8}
+[22:45:15] [WEATHER_SCAN] {"station": "KAUS", "current_f": 84.2}
+[22:45:15] [HEARTBEAT] {"mode": "PAPER", "bankroll": 1000.0, "ai_spread_target": 0.04, "open_positions": 0, "cached_markets": 100}
+
+--- KALSHI TERMINAL BOOT (2026-03-05 22:46:13.359177) ---
+[22:46:13] [HEARTBEAT] {"mode": "PAPER", "bankroll": 1000.0, "ai_spread_target": 0.04, "open_positions": 0, "cached_markets": 0}
+[22:46:23] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPCHALLENGERMATCH-26MAR06SCHCEC-SCH", "side": "YES", "price": 0.09, "count": 555}
+[22:46:23] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPCHALLENGERMATCH-26MAR06SCHCEC-CEC", "side": "YES", "price": 0.09, "count": 527}
+[22:46:37] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTAMATCH-26MAR06SIESVI-SVI", "side": "YES", "price": 0.09, "count": 501}
+[22:46:37] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTAMATCH-26MAR06SIESVI-SIE", "side": "YES", "price": 0.09, "count": 476}
+[22:46:44] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXSHLGAME-26MAR071200LULDJU-LUL", "side": "YES", "price": 0.05, "count": 814}
+[22:46:44] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXSHLGAME-26MAR071200LULDJU-DJU", "side": "YES", "price": 0.05, "count": 773}
+[22:46:44] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXSHLGAME-26MAR071200TIMFRO-TIM", "side": "YES", "price": 0.05, "count": 735}
+[22:46:44] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXSHLGAME-26MAR071200TIMFRO-FRO", "side": "YES", "price": 0.05, "count": 698}
+[22:46:44] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXSHLGAME-26MAR070915FARROG-ROG", "side": "YES", "price": 0.05, "count": 663}
+[22:46:44] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXSHLGAME-26MAR070915FARROG-FAR", "side": "YES", "price": 0.05, "count": 630}
+[22:46:45] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNBASTL-26MAR05NOPSAC-NOPDQUEEN22-3", "side": "YES", "price": 0.02, "count": 1497}
+[22:46:45] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNBASTL-26MAR05NOPSAC-NOPDQUEEN22-2", "side": "YES", "price": 0.02, "count": 1422}
+[22:46:45] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNBASTL-26MAR05NOPSAC-NOPDQUEEN22-1", "side": "YES", "price": 0.02, "count": 1351}
+[22:46:46] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPSETWINNER-26MAR06ALCDIM-2-DIM", "side": "YES", "price": 0.02, "count": 1284}
+[22:46:46] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPSETWINNER-26MAR06ALCDIM-2-ALC", "side": "YES", "price": 0.02, "count": 1219}
+[22:46:46] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPSETWINNER-26MAR06ALCDIM-1-DIM", "side": "YES", "price": 0.02, "count": 1158}
+[22:46:46] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPSETWINNER-26MAR06ALCDIM-1-ALC", "side": "YES", "price": 0.02, "count": 1101}
+[22:46:51] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPMATCH-26MAR06ALCDIM-DIM", "side": "YES", "price": 0.1, "count": 209}
+[22:46:51] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPMATCH-26MAR06ALCDIM-ALC", "side": "YES", "price": 0.27, "count": 73}
+[22:46:52] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXCS2MAP-26MAR07FOKFRI-2-FRI", "side": "YES", "price": 0.04, "count": 472}
+[22:46:52] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXCS2MAP-26MAR07FOKFRI-2-FOK", "side": "YES", "price": 0.04, "count": 448}
+[22:46:52] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXCS2MAP-26MAR07FOKFRI-1-FRI", "side": "YES", "price": 0.04, "count": 426}
+[22:46:52] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXCS2MAP-26MAR07FOKFRI-1-FOK", "side": "YES", "price": 0.04, "count": 404}
+[22:46:52] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXCS2TOTALMAPS-26MAR07FOKFRI-3", "side": "YES", "price": 0.02, "count": 769}
+[22:46:58] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXCS2GAME-26MAR07FOKFRI-FRI", "side": "YES", "price": 0.16, "count": 91}
+[22:46:58] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXCS2GAME-26MAR07FOKFRI-FOK", "side": "YES", "price": 0.16, "count": 86}
+[22:46:58] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPSETWINNER-26MAR06SHERUU-2-SHE", "side": "YES", "price": 0.02, "count": 660}
+[22:46:58] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPSETWINNER-26MAR06SHERUU-2-RUU", "side": "YES", "price": 0.02, "count": 627}
+[22:46:58] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPSETWINNER-26MAR06SHERUU-1-SHE", "side": "YES", "price": 0.02, "count": 595}
+[22:46:58] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPSETWINNER-26MAR06SHERUU-1-RUU", "side": "YES", "price": 0.02, "count": 566}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR07WINHP-WIN", "side": "YES", "price": 0.06, "count": 179}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR07WINHP-HP", "side": "YES", "price": 0.06, "count": 170}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR07COLGBUCK-COLG", "side": "YES", "price": 0.06, "count": 161}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR07COLGBUCK-BUCK", "side": "YES", "price": 0.06, "count": 153}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR07AMERBU-BU", "side": "YES", "price": 0.06, "count": 146}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR07AMERBU-AMER", "side": "YES", "price": 0.06, "count": 138}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR06OSUMINN-OSU", "side": "YES", "price": 0.06, "count": 131}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR06OSUMINN-MINN", "side": "YES", "price": 0.06, "count": 125}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR06OKLALSU-OKLA", "side": "YES", "price": 0.06, "count": 119}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR06OKLALSU-LSU", "side": "YES", "price": 0.06, "count": 113}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR06SEMOWIU-WIU", "side": "YES", "price": 0.06, "count": 107}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR06SEMOWIU-SEMO", "side": "YES", "price": 0.06, "count": 102}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR06NDNCST-ND", "side": "YES", "price": 0.06, "count": 97}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR06NDNCST-NCST", "side": "YES", "price": 0.05, "count": 110}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR06JOESDAV-JOES", "side": "YES", "price": 0.06, "count": 87}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR06JOESDAV-DAV", "side": "YES", "price": 0.06, "count": 83}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR06USAMRSH-USA", "side": "YES", "price": 0.06, "count": 79}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR06USAMRSH-MRSH", "side": "YES", "price": 0.06, "count": 75}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR06KSUOKST-OKST", "side": "YES", "price": 0.06, "count": 71}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR06KSUOKST-KSU", "side": "YES", "price": 0.06, "count": 67}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR06WASHUCLA-WASH", "side": "YES", "price": 0.06, "count": 64}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR06MANQUIN-QUIN", "side": "YES", "price": 0.06, "count": 61}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR06MANQUIN-MAN", "side": "YES", "price": 0.06, "count": 58}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR06UKSCAR-UK", "side": "YES", "price": 0.06, "count": 55}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR06UKSCAR-SCAR", "side": "YES", "price": 0.06, "count": 52}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR06CLEMDUKE-DUKE", "side": "YES", "price": 0.06, "count": 50}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR06CLEMDUKE-CLEM", "side": "YES", "price": 0.06, "count": 47}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR06LCHIURI-URI", "side": "YES", "price": 0.06, "count": 45}
+[22:47:01] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR06LCHIURI-LCHI", "side": "YES", "price": 0.06, "count": 42}
+[22:47:03] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPMATCH-26MAR06SHERUU-SHE", "side": "YES", "price": 0.12, "count": 20}
+[22:47:03] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPMATCH-26MAR06SHERUU-RUU", "side": "YES", "price": 0.12, "count": 19}
+[22:47:10] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMB1HWINNER-26MAR06NIUAKR-NIU", "side": "YES", "price": 0.02, "count": 110}
+[22:47:10] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMB1HWINNER-26MAR06NIUAKR-AKR", "side": "YES", "price": 0.85, "count": 2}
+[22:47:13] [HEARTBEAT] {"mode": "PAPER", "bankroll": 40.43, "ai_spread_target": 0.04, "open_positions": 63, "cached_markets": 0}
+[22:47:15] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTI-26MAR09-T81.99", "side": "YES", "price": 0.02, "count": 101}
+[22:47:15] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTI-26MAR09-T80.99", "side": "YES", "price": 0.02, "count": 96}
+[22:47:15] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTI-26MAR09-T79.99", "side": "YES", "price": 0.02, "count": 91}
+[22:47:15] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTI-26MAR09-T78.99", "side": "YES", "price": 0.02, "count": 86}
+[22:47:15] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTI-26MAR09-T77.99", "side": "YES", "price": 0.02, "count": 82}
+[22:47:15] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTI-26MAR09-T76.99", "side": "YES", "price": 0.02, "count": 78}
+[22:47:15] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTI-26MAR09-T75.99", "side": "YES", "price": 0.02, "count": 74}
+[22:47:15] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTI-26MAR09-T74.99", "side": "YES", "price": 0.02, "count": 70}
+[22:47:15] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTI-26MAR09-T73.99", "side": "YES", "price": 0.02, "count": 67}
+[22:47:15] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTI-26MAR09-T72.99", "side": "YES", "price": 0.02, "count": 63}
+[22:47:15] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTI-26MAR09-T71.99", "side": "YES", "price": 0.02, "count": 60}
+[22:47:15] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTI-26MAR09-T70.99", "side": "YES", "price": 0.02, "count": 57}
+[22:47:15] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTI-26MAR09-T69.99", "side": "YES", "price": 0.02, "count": 54}
+[22:47:15] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTI-26MAR09-T68.99", "side": "YES", "price": 0.02, "count": 52}
+[22:47:15] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTI-26MAR09-T67.99", "side": "YES", "price": 0.02, "count": 49}
+[22:47:16] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTAMATCH-26MAR06KARNAV-NAV", "side": "YES", "price": 0.12, "count": 7}
+[22:47:16] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTAMATCH-26MAR06KARNAV-KAR", "side": "YES", "price": 0.12, "count": 7}
+[22:47:18] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPSETWINNER-26MAR06DJOMAJ-2-MAJ", "side": "YES", "price": 0.02, "count": 42}
+[22:47:18] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPSETWINNER-26MAR06DJOMAJ-2-DJO", "side": "YES", "price": 0.02, "count": 40}
+[22:47:18] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPSETWINNER-26MAR06DJOMAJ-1-MAJ", "side": "YES", "price": 0.02, "count": 38}
+[22:47:18] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPSETWINNER-26MAR06DJOMAJ-1-DJO", "side": "YES", "price": 0.02, "count": 36}
+[22:47:21] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXSHLGAME-26MAR070915BRYLIN-LIN", "side": "YES", "price": 0.4, "count": 1}
+[22:47:21] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXSHLGAME-26MAR070915BRYLIN-BRY", "side": "YES", "price": 0.5, "count": 1}
+[22:47:21] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXSHLGAME-26MAR070915SKEMAL-SKE", "side": "YES", "price": 0.55, "count": 1}
+[22:47:21] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXSHLGAME-26MAR070915SKEMAL-MAL", "side": "YES", "price": 0.37, "count": 1}
+[22:47:21] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXAHLGAME-26MAR071500ROCLAV-ROC", "side": "YES", "price": 0.05, "count": 12}
+[22:47:21] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXAHLGAME-26MAR071500ROCLAV-LAV", "side": "YES", "price": 0.05, "count": 11}
+[22:47:22] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXSHLGAME-26MAR071200HCOVAX-VAX", "side": "YES", "price": 0.05, "count": 11}
+[22:47:22] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXSHLGAME-26MAR071200HCOVAX-HCO", "side": "YES", "price": 0.05, "count": 10}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTI-26MAR06-T81.99", "side": "YES", "price": 0.02, "count": 25}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTI-26MAR06-T80.99", "side": "YES", "price": 0.02, "count": 23}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTI-26MAR06-T79.99", "side": "YES", "price": 0.06, "count": 7}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTI-26MAR06-T78.99", "side": "YES", "price": 0.02, "count": 21}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTI-26MAR06-T77.99", "side": "YES", "price": 0.02, "count": 20}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTI-26MAR06-T76.99", "side": "YES", "price": 0.02, "count": 19}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTI-26MAR06-T75.99", "side": "YES", "price": 0.02, "count": 18}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTI-26MAR06-T74.99", "side": "YES", "price": 0.02, "count": 17}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTI-26MAR06-T73.99", "side": "YES", "price": 0.02, "count": 16}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTI-26MAR06-T72.99", "side": "YES", "price": 0.02, "count": 16}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTI-26MAR06-T70.99", "side": "YES", "price": 0.02, "count": 15}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLAST-26MAR05UTAPHI-UTADGUENTHER11-1", "side": "YES", "price": 0.28, "count": 1}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLGOAL-26MAR05BUFPIT-PITYCHINAKHOV59-1", "side": "YES", "price": 0.18, "count": 1}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLGOAL-26MAR05BUFPIT-PITRRAKELL67-1", "side": "YES", "price": 0.25, "count": 1}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLGOAL-26MAR05BUFPIT-PITJBRAZEAU16-1", "side": "YES", "price": 0.11, "count": 2}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLGOAL-26MAR05BUFPIT-PITEMALKIN71-1", "side": "YES", "price": 0.24, "count": 1}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLGOAL-26MAR05BUFPIT-PITAMANTHA39-1", "side": "YES", "price": 0.18, "count": 1}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLGOAL-26MAR05BUFPIT-BUFZBENSON6-1", "side": "YES", "price": 0.1, "count": 2}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLGOAL-26MAR05BUFPIT-BUFRMCLEOD71-1", "side": "YES", "price": 0.11, "count": 1}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLGOAL-26MAR05BUFPIT-BUFRDAHLIN26-1", "side": "YES", "price": 0.12, "count": 1}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLGOAL-26MAR05BUFPIT-BUFJZUCKER17-1", "side": "YES", "price": 0.19, "count": 1}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLGOAL-26MAR05BUFPIT-BUFJQUINN22-1", "side": "YES", "price": 0.14, "count": 1}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLGOAL-26MAR05BUFPIT-BUFJDOAN91-1", "side": "YES", "price": 0.18, "count": 1}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLGOAL-26MAR05UTAPHI-UTAMSERGACHEV98-1", "side": "YES", "price": 0.06, "count": 2}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLGOAL-26MAR05UTAPHI-UTALCROUSE67-1", "side": "YES", "price": 0.15, "count": 1}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLGOAL-26MAR05UTAPHI-UTAKYAMAMOTO56-1", "side": "YES", "price": 0.07, "count": 2}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLGOAL-26MAR05UTAPHI-UTABHAYTON27-1", "side": "YES", "price": 0.14, "count": 1}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLGOAL-26MAR05TORNYR-TORNROBERTSON89-1", "side": "YES", "price": 0.11, "count": 1}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLGOAL-26MAR05TORNYR-TORMMACCELLI63-1", "side": "YES", "price": 0.11, "count": 1}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLGOAL-26MAR05FLACBJ-FLAMSAMOSKEVICH11-1", "side": "YES", "price": 0.1, "count": 1}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLGOAL-26MAR05FLACBJ-FLAERODRIGUES17-1", "side": "YES", "price": 0.12, "count": 1}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLGOAL-26MAR05FLACBJ-CBJMOLIVIER24-1", "side": "YES", "price": 0.1, "count": 1}
+[22:47:24] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLGOAL-26MAR05FLACBJ-CBJDVORONKOV10-1", "side": "YES", "price": 0.12, "count": 1}
+[22:47:30] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMBGAME-26MAR07WAGLIU-WAG", "side": "YES", "price": 0.09, "count": 1}
+[22:47:30] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMBGAME-26MAR07WAGLIU-LIU", "side": "YES", "price": 0.09, "count": 1}
+[22:47:30] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMBSPREAD-26MAR05LINWSEMO-LINW9", "side": "YES", "price": 0.09, "count": 1}
+[22:47:30] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMBSPREAD-26MAR05LINWSEMO-LINW15", "side": "YES", "price": 0.04, "count": 2}
+[22:47:30] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMBSPREAD-26MAR05LINWSEMO-LINW12", "side": "YES", "price": 0.04, "count": 2}
+[22:47:30] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMBSPREAD-26MAR05BUCKNAVY-BUCK6", "side": "YES", "price": 0.04, "count": 2}
+[22:47:30] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMBSPREAD-26MAR05BUCKNAVY-BUCK3", "side": "YES", "price": 0.04, "count": 2}
+[22:47:30] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMBSPREAD-26MAR05ORUNDSU-ORU8", "side": "YES", "price": 0.04, "count": 2}
+[22:47:30] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMBSPREAD-26MAR05ORUNDSU-ORU5", "side": "YES", "price": 0.04, "count": 2}
+[22:47:30] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMBSPREAD-26MAR05ORUNDSU-ORU26", "side": "YES", "price": 0.02, "count": 3}
+[22:47:30] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMBSPREAD-26MAR05ORUNDSU-ORU23", "side": "YES", "price": 0.02, "count": 3}
+[22:47:30] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMBSPREAD-26MAR05ORUNDSU-ORU20", "side": "YES", "price": 0.02, "count": 3}
+[22:47:30] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMBSPREAD-26MAR05ORUNDSU-ORU17", "side": "YES", "price": 0.02, "count": 3}
+[22:47:30] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMBSPREAD-26MAR05ORUNDSU-ORU11", "side": "YES", "price": 0.02, "count": 3}
+[22:47:30] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMBSPREAD-26MAR05GASOARST-GASO22", "side": "YES", "price": 0.02, "count": 3}
+[22:47:30] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMBSPREAD-26MAR05GASOARST-GASO19", "side": "YES", "price": 0.02, "count": 2}
+[22:47:30] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMBSPREAD-26MAR05GASOARST-GASO16", "side": "YES", "price": 0.02, "count": 2}
+[22:47:30] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMBSPREAD-26MAR05GASOARST-GASO10", "side": "YES", "price": 0.04, "count": 1}
+[22:47:30] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMBSPREAD-26MAR05EIUUTM-EIU9", "side": "YES", "price": 0.04, "count": 1}
+[22:47:30] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMBSPREAD-26MAR05EIUUTM-EIU21", "side": "YES", "price": 0.02, "count": 2}
+[22:47:30] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMBSPREAD-26MAR05EIUUTM-EIU15", "side": "YES", "price": 0.02, "count": 2}
+[22:47:30] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMBSPREAD-26MAR05HCLEH-HC14", "side": "YES", "price": 0.04, "count": 1}
+[22:47:30] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMBSPREAD-26MAR05HCLEH-HC11", "side": "YES", "price": 0.04, "count": 1}
+[22:47:30] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMBSPREAD-26MAR05JMUUSM-USM16", "side": "YES", "price": 0.04, "count": 1}
+[22:47:31] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMBSPREAD-26MAR06MOHOHIO-OHIO19", "side": "YES", "price": 0.02, "count": 2}
+[22:47:31] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAMBSPREAD-26MAR06MOHOHIO-OHIO16", "side": "YES", "price": 0.02, "count": 1}
+[22:47:43] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXMVECROSSCATEGORY-S20268754743BE93-BCA18F95EE7", "side": "YES", "price": 0.02, "count": 1}
+[22:47:57] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLTOTAL-26MAR08MINCOL-9", "side": "YES", "price": 0.02, "count": 1}
+[22:47:57] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLTOTAL-26MAR08MINCOL-8", "side": "YES", "price": 0.02, "count": 1}
+[22:47:57] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLSPREAD-26MAR08MINCOL-MIN2", "side": "YES", "price": 0.02, "count": 1}
+[22:47:57] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLSPREAD-26MAR08MINCOL-MIN1", "side": "YES", "price": 0.02, "count": 1}
+[22:47:57] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLSPREAD-26MAR08MINCOL-COL2", "side": "YES", "price": 0.02, "count": 1}
+[22:47:57] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNHLSPREAD-26MAR08MINCOL-COL1", "side": "YES", "price": 0.02, "count": 1}
+[22:47:57] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNBAMENTION-26MAR07GSWOKC-TRIP", "side": "YES", "price": 0.02, "count": 1}
+[22:47:57] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNBAMENTION-26MAR07GSWOKC-RETI", "side": "YES", "price": 0.02, "count": 1}
+[22:48:00] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNFLTRADE-26DEC01-RDOW", "side": "YES", "price": 0.02, "count": 1}
+[22:48:13] [HEARTBEAT] {"mode": "PAPER", "bankroll": 0.56, "ai_spread_target": 0.04, "open_positions": 161, "cached_markets": 0}
+[22:48:20] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPSETWINNER-26MAR06BERZVE-2-ZVE", "side": "YES", "price": 0.02, "count": 1}
+[22:48:20] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPSETWINNER-26MAR06BERZVE-2-BER", "side": "YES", "price": 0.02, "count": 1}
+[22:48:20] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPSETWINNER-26MAR06GIRMEN-2-MEN", "side": "YES", "price": 0.02, "count": 1}
+[22:48:20] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPSETWINNER-26MAR06GIRMEN-2-GIR", "side": "YES", "price": 0.02, "count": 1}
+[22:48:20] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPSETWINNER-26MAR06RUBDIA-2-RUB", "side": "YES", "price": 0.02, "count": 1}
+[22:48:20] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPSETWINNER-26MAR06RUBDIA-2-DIA", "side": "YES", "price": 0.02, "count": 1}
+[22:48:20] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPSETWINNER-26MAR06MONAUG-2-MON", "side": "YES", "price": 0.02, "count": 1}
+[22:48:20] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPSETWINNER-26MAR06MONAUG-2-AUG", "side": "YES", "price": 0.02, "count": 1}
+[22:49:13] [HEARTBEAT] {"mode": "PAPER", "bankroll": 0.4, "ai_spread_target": 0.04, "open_positions": 169, "cached_markets": 0}
+[22:50:13] [HEARTBEAT] {"mode": "PAPER", "bankroll": 0.4, "ai_spread_target": 0.04, "open_positions": 169, "cached_markets": 0}
+
+--- KALSHI TERMINAL BOOT (2026-03-05 22:50:32.937440) ---
+[22:50:33] [HEARTBEAT] {"mode": "PAPER", "bankroll": 1000.0, "ai_spread_target": 0.04, "open_positions": 169, "cached_markets": 0}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXATPCHALLENGERMATCH-26MAR06SCHCEC-SCH", "pnl": -44.4, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXATPCHALLENGERMATCH-26MAR06SCHCEC-CEC", "pnl": -42.16, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXWTAMATCH-26MAR06SIESVI-SVI", "pnl": -40.08, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXWTAMATCH-26MAR06SIESVI-SIE", "pnl": -38.08, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXSHLGAME-26MAR071200LULDJU-LUL", "pnl": -32.56, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXSHLGAME-26MAR071200LULDJU-DJU", "pnl": -30.92, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXSHLGAME-26MAR071200TIMFRO-TIM", "pnl": -29.4, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXSHLGAME-26MAR071200TIMFRO-FRO", "pnl": -27.92, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXSHLGAME-26MAR070915FARROG-ROG", "pnl": -26.52, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXSHLGAME-26MAR070915FARROG-FAR", "pnl": -25.2, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXNBASTL-26MAR05NOPSAC-NOPDQUEEN22-3", "pnl": -14.97, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXNBASTL-26MAR05NOPSAC-NOPDQUEEN22-2", "pnl": -14.22, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXNBASTL-26MAR05NOPSAC-NOPDQUEEN22-1", "pnl": -13.51, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXATPSETWINNER-26MAR06ALCDIM-2-DIM", "pnl": -12.84, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXATPSETWINNER-26MAR06ALCDIM-2-ALC", "pnl": -12.19, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXATPSETWINNER-26MAR06ALCDIM-1-DIM", "pnl": -11.58, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXATPSETWINNER-26MAR06ALCDIM-1-ALC", "pnl": -11.01, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXATPMATCH-26MAR06ALCDIM-DIM", "pnl": -18.81, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXATPMATCH-26MAR06ALCDIM-ALC", "pnl": -18.98, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXCS2MAP-26MAR07FOKFRI-2-FRI", "pnl": -14.16, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXCS2MAP-26MAR07FOKFRI-2-FOK", "pnl": -13.44, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXCS2MAP-26MAR07FOKFRI-1-FRI", "pnl": -12.78, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXCS2MAP-26MAR07FOKFRI-1-FOK", "pnl": -12.12, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXCS2TOTALMAPS-26MAR07FOKFRI-3", "pnl": -7.69, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXCS2GAME-26MAR07FOKFRI-FRI", "pnl": -13.65, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXCS2GAME-26MAR07FOKFRI-FOK", "pnl": -12.9, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXATPSETWINNER-26MAR06SHERUU-2-SHE", "pnl": -6.6, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXATPSETWINNER-26MAR06SHERUU-2-RUU", "pnl": -6.27, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXATPSETWINNER-26MAR06SHERUU-1-SHE", "pnl": -5.95, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXATPSETWINNER-26MAR06SHERUU-1-RUU", "pnl": -5.66, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR07WINHP-WIN", "pnl": -8.95, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR07WINHP-HP", "pnl": -8.5, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR07COLGBUCK-COLG", "pnl": -8.05, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR07COLGBUCK-BUCK", "pnl": -7.65, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR07AMERBU-BU", "pnl": -7.3, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR07AMERBU-AMER", "pnl": -6.9, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR06OSUMINN-OSU", "pnl": -6.55, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR06OSUMINN-MINN", "pnl": -6.25, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR06OKLALSU-OKLA", "pnl": -5.95, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR06OKLALSU-LSU", "pnl": -5.65, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR06SEMOWIU-WIU", "pnl": -5.35, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR06SEMOWIU-SEMO", "pnl": -5.1, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR06NDNCST-ND", "pnl": -4.85, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR06NDNCST-NCST", "pnl": -4.4, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR06JOESDAV-JOES", "pnl": -4.35, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR06JOESDAV-DAV", "pnl": -4.15, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR06USAMRSH-USA", "pnl": -3.95, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR06USAMRSH-MRSH", "pnl": -3.75, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR06KSUOKST-OKST", "pnl": -3.55, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR06KSUOKST-KSU", "pnl": -3.35, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR06WASHUCLA-WASH", "pnl": -3.2, "reason": "Emergency Flatten"}
+[22:50:58] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR06MANQUIN-QUIN", "pnl": -3.05, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR06MANQUIN-MAN", "pnl": -2.9, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR06UKSCAR-UK", "pnl": -2.75, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR06UKSCAR-SCAR", "pnl": -2.6, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR06CLEMDUKE-DUKE", "pnl": -2.5, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR06CLEMDUKE-CLEM", "pnl": -2.35, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR06LCHIURI-URI", "pnl": -2.25, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAWBGAME-26MAR06LCHIURI-LCHI", "pnl": -2.1, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXATPMATCH-26MAR06SHERUU-SHE", "pnl": -2.2, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXATPMATCH-26MAR06SHERUU-RUU", "pnl": -2.09, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMB1HWINNER-26MAR06NIUAKR-NIU", "pnl": -1.1, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMB1HWINNER-26MAR06NIUAKR-AKR", "pnl": -1.68, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTI-26MAR09-T81.99", "pnl": -1.01, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTI-26MAR09-T80.99", "pnl": -0.96, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTI-26MAR09-T79.99", "pnl": -0.91, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTI-26MAR09-T78.99", "pnl": -0.86, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTI-26MAR09-T77.99", "pnl": -0.82, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTI-26MAR09-T76.99", "pnl": -0.78, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTI-26MAR09-T75.99", "pnl": -0.74, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTI-26MAR09-T74.99", "pnl": -0.7, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTI-26MAR09-T73.99", "pnl": -0.67, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTI-26MAR09-T72.99", "pnl": -0.63, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTI-26MAR09-T71.99", "pnl": -0.6, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTI-26MAR09-T70.99", "pnl": -0.57, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTI-26MAR09-T69.99", "pnl": -0.54, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTI-26MAR09-T68.99", "pnl": -0.52, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTI-26MAR09-T67.99", "pnl": -0.49, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTAMATCH-26MAR06KARNAV-NAV", "pnl": -0.77, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTAMATCH-26MAR06KARNAV-KAR", "pnl": -0.77, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXATPSETWINNER-26MAR06DJOMAJ-2-MAJ", "pnl": -0.42, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXATPSETWINNER-26MAR06DJOMAJ-2-DJO", "pnl": -0.4, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXATPSETWINNER-26MAR06DJOMAJ-1-MAJ", "pnl": -0.38, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXATPSETWINNER-26MAR06DJOMAJ-1-DJO", "pnl": -0.36, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXSHLGAME-26MAR070915BRYLIN-LIN", "pnl": -0.39, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXSHLGAME-26MAR070915BRYLIN-BRY", "pnl": -0.49, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXSHLGAME-26MAR070915SKEMAL-SKE", "pnl": -0.54, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXSHLGAME-26MAR070915SKEMAL-MAL", "pnl": -0.36, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXAHLGAME-26MAR071500ROCLAV-ROC", "pnl": -0.48, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXAHLGAME-26MAR071500ROCLAV-LAV", "pnl": -0.44, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXSHLGAME-26MAR071200HCOVAX-VAX", "pnl": -0.44, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXSHLGAME-26MAR071200HCOVAX-HCO", "pnl": -0.4, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTI-26MAR06-T81.99", "pnl": -0.25, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTI-26MAR06-T80.99", "pnl": -0.23, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTI-26MAR06-T79.99", "pnl": -0.35, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTI-26MAR06-T78.99", "pnl": -0.21, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTI-26MAR06-T77.99", "pnl": -0.2, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTI-26MAR06-T76.99", "pnl": -0.19, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTI-26MAR06-T75.99", "pnl": -0.18, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTI-26MAR06-T74.99", "pnl": -0.17, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTI-26MAR06-T73.99", "pnl": -0.16, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTI-26MAR06-T72.99", "pnl": -0.16, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXWTI-26MAR06-T70.99", "pnl": -0.15, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLAST-26MAR05UTAPHI-UTADGUENTHER11-1", "pnl": -0.27, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLGOAL-26MAR05BUFPIT-PITYCHINAKHOV59-1", "pnl": -0.17, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLGOAL-26MAR05BUFPIT-PITRRAKELL67-1", "pnl": -0.24, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLGOAL-26MAR05BUFPIT-PITJBRAZEAU16-1", "pnl": -0.2, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLGOAL-26MAR05BUFPIT-PITEMALKIN71-1", "pnl": -0.23, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLGOAL-26MAR05BUFPIT-PITAMANTHA39-1", "pnl": -0.17, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLGOAL-26MAR05BUFPIT-BUFZBENSON6-1", "pnl": -0.18, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLGOAL-26MAR05BUFPIT-BUFRMCLEOD71-1", "pnl": -0.1, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLGOAL-26MAR05BUFPIT-BUFRDAHLIN26-1", "pnl": -0.11, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLGOAL-26MAR05BUFPIT-BUFJZUCKER17-1", "pnl": -0.18, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLGOAL-26MAR05BUFPIT-BUFJQUINN22-1", "pnl": -0.13, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLGOAL-26MAR05BUFPIT-BUFJDOAN91-1", "pnl": -0.17, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLGOAL-26MAR05UTAPHI-UTAMSERGACHEV98-1", "pnl": -0.1, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLGOAL-26MAR05UTAPHI-UTALCROUSE67-1", "pnl": -0.14, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLGOAL-26MAR05UTAPHI-UTAKYAMAMOTO56-1", "pnl": -0.12, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLGOAL-26MAR05UTAPHI-UTABHAYTON27-1", "pnl": -0.13, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLGOAL-26MAR05TORNYR-TORNROBERTSON89-1", "pnl": -0.1, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLGOAL-26MAR05TORNYR-TORMMACCELLI63-1", "pnl": -0.1, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLGOAL-26MAR05FLACBJ-FLAMSAMOSKEVICH11-1", "pnl": -0.09, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLGOAL-26MAR05FLACBJ-FLAERODRIGUES17-1", "pnl": -0.11, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLGOAL-26MAR05FLACBJ-CBJMOLIVIER24-1", "pnl": -0.09, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLGOAL-26MAR05FLACBJ-CBJDVORONKOV10-1", "pnl": -0.11, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMBGAME-26MAR07WAGLIU-WAG", "pnl": -0.08, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMBGAME-26MAR07WAGLIU-LIU", "pnl": -0.08, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMBSPREAD-26MAR05LINWSEMO-LINW9", "pnl": -0.08, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMBSPREAD-26MAR05LINWSEMO-LINW15", "pnl": -0.06, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMBSPREAD-26MAR05LINWSEMO-LINW12", "pnl": -0.06, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMBSPREAD-26MAR05BUCKNAVY-BUCK6", "pnl": -0.06, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMBSPREAD-26MAR05BUCKNAVY-BUCK3", "pnl": -0.06, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMBSPREAD-26MAR05ORUNDSU-ORU8", "pnl": -0.06, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMBSPREAD-26MAR05ORUNDSU-ORU5", "pnl": -0.06, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMBSPREAD-26MAR05ORUNDSU-ORU26", "pnl": -0.03, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMBSPREAD-26MAR05ORUNDSU-ORU23", "pnl": -0.03, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMBSPREAD-26MAR05ORUNDSU-ORU20", "pnl": -0.03, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMBSPREAD-26MAR05ORUNDSU-ORU17", "pnl": -0.03, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMBSPREAD-26MAR05ORUNDSU-ORU11", "pnl": -0.03, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMBSPREAD-26MAR05GASOARST-GASO22", "pnl": -0.03, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMBSPREAD-26MAR05GASOARST-GASO19", "pnl": -0.02, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMBSPREAD-26MAR05GASOARST-GASO16", "pnl": -0.02, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMBSPREAD-26MAR05GASOARST-GASO10", "pnl": -0.03, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMBSPREAD-26MAR05EIUUTM-EIU9", "pnl": -0.03, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMBSPREAD-26MAR05EIUUTM-EIU21", "pnl": -0.02, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMBSPREAD-26MAR05EIUUTM-EIU15", "pnl": -0.02, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMBSPREAD-26MAR05HCLEH-HC14", "pnl": -0.03, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMBSPREAD-26MAR05HCLEH-HC11", "pnl": -0.03, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMBSPREAD-26MAR05JMUUSM-USM16", "pnl": -0.03, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMBSPREAD-26MAR06MOHOHIO-OHIO19", "pnl": -0.02, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNCAAMBSPREAD-26MAR06MOHOHIO-OHIO16", "pnl": -0.01, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXMVECROSSCATEGORY-S20268754743BE93-BCA18F95EE7", "pnl": -0.01, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLTOTAL-26MAR08MINCOL-9", "pnl": -0.01, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLTOTAL-26MAR08MINCOL-8", "pnl": -0.01, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLSPREAD-26MAR08MINCOL-MIN2", "pnl": -0.01, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLSPREAD-26MAR08MINCOL-MIN1", "pnl": -0.01, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLSPREAD-26MAR08MINCOL-COL2", "pnl": -0.01, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNHLSPREAD-26MAR08MINCOL-COL1", "pnl": -0.01, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNBAMENTION-26MAR07GSWOKC-TRIP", "pnl": -0.01, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNBAMENTION-26MAR07GSWOKC-RETI", "pnl": -0.01, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXNFLTRADE-26DEC01-RDOW", "pnl": -0.01, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXATPSETWINNER-26MAR06BERZVE-2-ZVE", "pnl": -0.01, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXATPSETWINNER-26MAR06BERZVE-2-BER", "pnl": -0.01, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXATPSETWINNER-26MAR06GIRMEN-2-MEN", "pnl": -0.01, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXATPSETWINNER-26MAR06GIRMEN-2-GIR", "pnl": -0.01, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXATPSETWINNER-26MAR06RUBDIA-2-RUB", "pnl": -0.01, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXATPSETWINNER-26MAR06RUBDIA-2-DIA", "pnl": -0.01, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXATPSETWINNER-26MAR06MONAUG-2-MON", "pnl": -0.01, "reason": "Emergency Flatten"}
+[22:50:59] [TRADE_CLOSE] {"ticker": "KXATPSETWINNER-26MAR06MONAUG-2-AUG", "pnl": -0.01, "reason": "Emergency Flatten"}
+[22:51:08] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTAMATCH-26MAR06DAYSWI-SWI", "side": "YES", "price": 0.09, "count": 696}
+[22:51:08] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTAMATCH-26MAR06DAYSWI-DAY", "side": "YES", "price": 0.09, "count": 661}
+[22:51:17] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPCHALLENGERMATCH-26MAR06SCHCEC-SCH", "side": "YES", "price": 0.6, "count": 94}
+[22:51:30] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTAMATCH-26MAR06SIESVI-SVI", "side": "YES", "price": 0.09, "count": 597}
+[22:51:30] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXWTAMATCH-26MAR06SIESVI-SIE", "side": "YES", "price": 0.09, "count": 567}
+[22:51:33] [HEARTBEAT] {"mode": "PAPER", "bankroll": 970.27, "ai_spread_target": 0.04, "open_positions": 5, "cached_markets": 0}
+[22:51:43] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPMATCH-26MAR06ALCDIM-DIM", "side": "YES", "price": 0.07, "count": 693}
+[22:51:43] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXATPMATCH-26MAR06ALCDIM-ALC", "side": "YES", "price": 0.52, "count": 88}
+[22:51:50] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXCS2GAME-26MAR07FOKFRI-FRI", "side": "YES", "price": 0.16, "count": 273}
+[22:51:50] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXCS2GAME-26MAR07FOKFRI-FOK", "side": "YES", "price": 0.16, "count": 260}
+[22:51:52] [TRADE_EXECUTE] {"strat": "spread", "ticker": "KXNCAAWBGAME-26MAR07WINHP-WIN", "side": "YES", "price": 0.06, "count": 658}
+[22:52:33] [HEARTBEAT] {"mode": "PAPER", "bankroll": 751.24, "ai_spread_target": 0.04, "open_positions": 10, "cached_markets": 0}
+[22:53:33] [HEARTBEAT] {"mode": "PAPER", "bankroll": 751.24, "ai_spread_target": 0.04, "open_positions": 10, "cached_markets": 0}
+[22:54:33] [HEARTBEAT] {"mode": "PAPER", "bankroll": 751.24, "ai_spread_target": 0.04, "open_positions": 10, "cached_markets": 0}
+[22:55:33] [HEARTBEAT] {"mode": "PAPER", "bankroll": 751.24, "ai_spread_target": 0.04, "open_positions": 10, "cached_markets": 0}
+[22:55:42] [AI_DECISION] {"old": 0.04, "new": 0.05, "reason": "Win rate < 50%, increasing spread requirement"}
+[22:56:33] [HEARTBEAT] {"mode": "PAPER", "bankroll": 751.24, "ai_spread_target": 0.05, "open_positions": 10, "cached_markets": 0}
+[22:57:33] [HEARTBEAT] {"mode": "PAPER", "bankroll": 751.24, "ai_spread_target": 0.05, "open_positions": 10, "cached_markets": 0}
+[22:58:33] [HEARTBEAT] {"mode": "PAPER", "bankroll": 751.24, "ai_spread_target": 0.05, "open_positions": 10, "cached_markets": 0}
+[22:59:12] [HEARTBEAT] {"exposure_usd": 502.32}
+[23:00:12] [HEARTBEAT] {"exposure_usd": 502.32}
+[23:01:12] [HEARTBEAT] {"exposure_usd": 502.32}
+[23:02:04] [HEARTBEAT] {"exposure_usd": 502.32}
+[23:03:04] [HEARTBEAT] {"exposure_usd": 502.32}

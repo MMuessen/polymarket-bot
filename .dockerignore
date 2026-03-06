@@ -1,0 +1,5 @@
+ollama_data/
+data/
+venv/
+.git/
+*.pem

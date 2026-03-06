@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+websockets
+aiohttp
+py-clob-client
+python-dotenv
+pandas
+sqlalchemy
+redis
+jinja2
+python-multipart
+feedparser
+kalshi_python_async
