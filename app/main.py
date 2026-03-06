@@ -41,6 +41,8 @@ STATIC_DIR.mkdir(parents=True, exist_ok=True)
 TEMPLATE_DIR.mkdir(parents=True, exist_ok=True)
 
 DB_PATH = DATA_DIR / "trades.db"
+CRYPTO_CACHE_PATH = DATA_DIR / "crypto_market_cache.json"
+CANDIDATE_LOG_PATH = DATA_DIR / "candidate_events.jsonl"
 
 engine = create_engine(f"sqlite:///{DB_PATH}", connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
@@ -299,8 +301,9 @@ class TradingBot:
         self.paper_mode = os.getenv("PAPER_MODE", "true").lower() == "true"
         self.live_armed = os.getenv("ARM_LIVE_TRADING", "false").lower() == "true"
         self.poll_seconds = max(5, int(os.getenv("POLL_SECONDS", "15")))
-        self.full_scan_seconds = max(30, int(os.getenv("FULL_MARKET_SCAN_SECONDS", "300")))
-        self.max_markets = max(1000, int(os.getenv("MAX_MARKETS", "1000")))
+        self.full_scan_seconds = max(300, int(os.getenv("FULL_MARKET_SCAN_SECONDS", "3600")))
+        self.max_markets = max(100, int(os.getenv("MAX_MARKETS", "500")))
+        self.watch_refresh_limit = min(10, max(1, int(os.getenv("WATCH_REFRESH_LIMIT", "10"))))
         self.watch_terms = [t.strip().upper() for t in os.getenv(
             "WATCH_TERMS", "BTC,BITCOIN,ETH,ETHEREUM,SOL,SOLANA,CRYPTO"
         ).split(",") if t.strip()]
@@ -316,7 +319,10 @@ class TradingBot:
         self.market_rejection_examples: Dict[str, List[str]] = {}
         self.raw_market_samples: List[Dict[str, Any]] = []
         self.watched_market_samples: List[Dict[str, Any]] = []
+        self.cached_crypto_tickers: List[str] = []
+        self.watch_cursor: int = 0
         self.last_full_scan_at: Optional[datetime] = None
+        self.last_cache_write_at: Optional[datetime] = None
         self.spot_prices: Dict[str, float] = {"BTC": 0.0, "ETH": 0.0, "SOL": 0.0}
         self.health: Dict[str, Any] = {
             "last_market_refresh": None,
@@ -332,23 +338,23 @@ class TradingBot:
                 name="crypto_lag",
                 enabled=True,
                 live_enabled=False,
-                min_edge=0.09,
+                min_edge=0.03,
                 max_spread=0.08,
-                max_ticket_dollars=float(os.getenv("MAX_TICKET_DOLLARS", "25")),
-                cooldown_seconds=900,
-                max_hours_to_expiry=168,
-                min_hours_to_expiry=1,
+                max_ticket_dollars=25,
+                cooldown_seconds=300,
+                max_hours_to_expiry=12,
+                min_hours_to_expiry=4,
             ),
             "sentiment": StrategyState(
                 name="sentiment",
                 enabled=False,
                 live_enabled=False,
                 min_edge=0.12,
-                max_spread=0.10,
-                max_ticket_dollars=float(os.getenv("MAX_TICKET_DOLLARS", "25")),
+                max_spread=0.08,
+                max_ticket_dollars=25,
                 cooldown_seconds=1800,
-                max_hours_to_expiry=48,
-                min_hours_to_expiry=1,
+                max_hours_to_expiry=12,
+                min_hours_to_expiry=4,
             ),
         }
         self.cooldowns: Dict[str, datetime] = {}
@@ -358,6 +364,7 @@ class TradingBot:
         self.session: Optional[aiohttp.ClientSession] = None
         self.loop_task: Optional[asyncio.Task] = None
         self._lock = asyncio.Lock()
+        self._load_crypto_cache()
         self.kalshi_client = KalshiClient()
         self.paper_broker = PaperBroker()
         self.live_broker = LiveKalshiBroker(self.kalshi_client)
@@ -418,9 +425,13 @@ class TradingBot:
         assert self.session is not None
         while True:
             try:
+                self.log("Main loop tick: starting refresh cycle.")
                 await self.refresh_markets()
+                self.log("Main loop tick: market refresh complete.")
                 await self.refresh_balance()
+                self.log("Main loop tick: balance refresh complete.")
                 await self.run_strategies()
+                self.log("Main loop tick: strategy run complete.")
                 self.health["loop_error"] = None
             except asyncio.CancelledError:
                 raise
@@ -486,19 +497,24 @@ class TradingBot:
 
     async def refresh_markets(self) -> None:
         assert self.session is not None
+        self.log("refresh_markets: entered")
 
-        need_full_scan = (
-            self.last_full_scan_at is None
-            or (datetime.now(timezone.utc) - self.last_full_scan_at).total_seconds() >= self.full_scan_seconds
-            or not self.market_snapshots
-        )
+        # Disable automatic full discovery scan (manual only)
+        need_full_scan = False
+        self.log(f"refresh_markets: need_full_scan={need_full_scan} cached={len(self.cached_crypto_tickers)}")
 
-        if not need_full_scan:
-            self.health["last_market_refresh"] = datetime.now(timezone.utc).isoformat()
-            return
+        if need_full_scan:
+            self.log("refresh_markets: starting full discovery scan")
+            raw_markets = await asyncio.wait_for(self._fetch_all_open_markets(), timeout=180)
+            self.log(f"refresh_markets: full discovery returned {len(raw_markets)} markets")
+            self.last_full_scan_at = datetime.now(timezone.utc)
+            self._refresh_crypto_cache_from_raw_markets(raw_markets)
+            self.log(f"refresh_markets: cache refreshed with {len(self.cached_crypto_tickers)} tickers")
 
-        raw_markets = await self._fetch_all_open_markets()
-        self.last_full_scan_at = datetime.now(timezone.utc)
+        self.log("refresh_markets: starting cached watch fetch")
+        raw_markets = await asyncio.wait_for(self._fetch_cached_crypto_markets(), timeout=60)
+        self.log(f"refresh_markets: cached watch fetch returned {len(raw_markets)} markets")
+
         self.raw_market_count = len(raw_markets)
         self.raw_market_samples = [
             {
@@ -540,9 +556,52 @@ class TradingBot:
                         "status": classified.get("status"),
                         "threshold": classified.get("threshold"),
                         "direction": classified.get("direction"),
+                        "distance_from_spot_pct": self._threshold_distance_pct(
+                            classified.get("asset"),
+                            classified.get("threshold"),
+                            classified.get("floor_strike"),
+                            classified.get("cap_strike"),
+                        ),
                     })
 
+            model_prob = None
+            market_prob = None
+            edge = None
+
+            if classified.get("asset") == "BTC" and classified.get("close_dt") is not None:
+                spot = float(self.spot_prices.get("BTC", 0.0) or 0.0)
+                hours_to_expiry = (classified["close_dt"] - datetime.now(timezone.utc)).total_seconds() / 3600.0
+
+                if classified.get("market_family") == "range_bucket":
+                    model_prob = self._bucket_probability(
+                        spot,
+                        classified.get("floor_strike"),
+                        classified.get("cap_strike"),
+                        hours_to_expiry,
+                    )
+                elif classified.get("market_family") == "price_threshold":
+                    if classified.get("direction") == "above":
+                        model_prob = self._bucket_probability(
+                            spot,
+                            classified.get("threshold"),
+                            None,
+                            hours_to_expiry,
+                        )
+                    elif classified.get("direction") == "below":
+                        model_prob = self._bucket_probability(
+                            spot,
+                            None,
+                            classified.get("threshold"),
+                            hours_to_expiry,
+                        )
+
+                market_prob = classified.get("yes_ask")
+                if model_prob is not None and market_prob is not None:
+                    edge = model_prob - market_prob
+
             eligible, reason = self._evaluate_market_eligibility(classified)
+            self._log_candidate_event(classified, eligible, reason, model_prob, market_prob, edge)
+
             if not eligible:
                 rejections[reason] += 1
                 self._add_rejection_example(examples, reason, classified.get("ticker") or classified.get("title") or "unknown")
@@ -570,51 +629,164 @@ class TradingBot:
             "normalized_markets": self.normalized_market_count,
             "classified_crypto_markets": self.classified_market_count,
             "eligible_markets": self.eligible_market_count,
+            "cached_crypto_ticker_count": len(self.cached_crypto_tickers),
+            "watch_cursor": self.watch_cursor,
+            "watch_refresh_limit": self.watch_refresh_limit,
             "rejections": dict(self.market_rejections),
             "rejection_examples": self.market_rejection_examples,
             "raw_market_samples": self.raw_market_samples,
             "watched_market_samples": self.watched_market_samples,
             "last_full_scan_at": self.last_full_scan_at.isoformat() if self.last_full_scan_at else None,
+            "last_cache_write_at": self.last_cache_write_at.isoformat() if self.last_cache_write_at else None,
             "full_scan_seconds": self.full_scan_seconds,
         }
         self.log(
-            f"Market pipeline: raw={self.raw_market_count} normalized={self.normalized_market_count} "
-            f"classified={self.classified_market_count} eligible={self.eligible_market_count}"
+            f"Market pipeline: cached={len(self.cached_crypto_tickers)} raw={self.raw_market_count} "
+            f"normalized={self.normalized_market_count} classified={self.classified_market_count} "
+            f"eligible={self.eligible_market_count}"
         )
 
     async def _fetch_all_open_markets(self) -> List[Dict[str, Any]]:
         assert self.session is not None
         markets: List[Dict[str, Any]] = []
         cursor: Optional[str] = None
+        pages = 0
 
         while True:
             path = f"/markets?status=open&limit={self.max_markets}"
             if cursor:
                 path += f"&cursor={cursor}"
-            data = await self.kalshi_client.get_json(self.session, path)
 
+            data = await self.kalshi_client.get_json(self.session, path)
             batch = data.get("markets", []) or []
             markets.extend(batch)
+            pages += 1
 
             cursor = data.get("cursor") or data.get("next_cursor")
             if not cursor or not batch:
                 break
 
-            if len(batch) < self.max_markets:
-                break
+            await asyncio.sleep(0.35)
 
+        self.log(f"Full discovery scan fetched {len(markets)} markets across {pages} pages.")
+        return markets
+
+    async def _fetch_cached_crypto_markets(self) -> List[Dict[str, Any]]:
+        assert self.session is not None
+        if not self.cached_crypto_tickers:
+            self.log("_fetch_cached_crypto_markets: no cached tickers")
+            return []
+
+        total = len(self.cached_crypto_tickers)
+        window = min(self.watch_refresh_limit, total)
+        start = self.watch_cursor
+        end = start + window
+
+        if end <= total:
+            selected = self.cached_crypto_tickers[start:end]
+        else:
+            selected = self.cached_crypto_tickers[start:] + self.cached_crypto_tickers[: end - total]
+
+        self.watch_cursor = (start + window) % total
+
+        markets: List[Dict[str, Any]] = []
+
+        self.log(
+            f"_fetch_cached_crypto_markets: selected {len(selected)} tickers "
+            f"(start={start}, end={end}, cursor={self.watch_cursor}, total={total})"
+        )
+
+        for i in range(0, len(selected), 10):
+            chunk = selected[i:i+10]
+            self.log(f"_fetch_cached_crypto_markets: requesting chunk {i//10 + 1} size={len(chunk)} first={chunk[0]}")
+            path = "/markets?tickers=" + ",".join(chunk)
+            data = await asyncio.wait_for(self.kalshi_client.get_json(self.session, path), timeout=20)
+            returned = len(data.get("markets", []) or [])
+            self.log(f"_fetch_cached_crypto_markets: chunk {i//10 + 1} returned {returned} markets")
+            markets.extend(data.get("markets", []) or [])
+            await asyncio.sleep(0.05)
+
+        self.log(
+            f"Refreshed cached crypto watch window: {len(selected)} tickers "
+            f"(cursor={self.watch_cursor}/{total})"
+        )
         return markets
 
     async def refresh_balance(self) -> None:
         if not self.kalshi_client.trading_enabled or self.session is None:
+            self.health["last_balance_error"] = "trading_not_enabled_or_no_session"
             return
         try:
             data = await self.kalshi_client.get_json(self.session, "/portfolio/balance", auth=True)
-            self.kalshi_balance = round(float(data.get("balance", 0)) / 100.0, 2)
-            self.portfolio_value = round(float(data.get("portfolio_value", 0)) / 100.0, 2)
+
+            balance = data.get("balance", 0)
+            portfolio_value = data.get("portfolio_value", 0)
+
+            self.kalshi_balance = round(float(balance) / 100.0, 2)
+            self.portfolio_value = round(float(portfolio_value) / 100.0, 2)
+
             self.health["last_balance_refresh"] = datetime.now(timezone.utc).isoformat()
+            self.health["last_balance_error"] = None
         except Exception as exc:
-            self.log(f"Balance refresh failed: {exc}")
+            self.health["last_balance_error"] = str(exc)
+            self.log(f"Balance refresh failed: {type(exc).__name__}: {exc!r}")
+
+    def _load_crypto_cache(self) -> None:
+        if not CRYPTO_CACHE_PATH.exists():
+            self.cached_crypto_tickers = []
+            return
+        try:
+            payload = json.loads(CRYPTO_CACHE_PATH.read_text())
+            tickers = payload.get("tickers", [])
+            self.cached_crypto_tickers = [str(x).upper() for x in tickers if str(x).strip()]
+            ts = payload.get("written_at")
+            if ts:
+                try:
+                    self.last_cache_write_at = datetime.fromisoformat(ts)
+                except Exception:
+                    self.last_cache_write_at = None
+            self.log(f"Loaded {len(self.cached_crypto_tickers)} cached crypto tickers.")
+        except Exception as exc:
+            self.cached_crypto_tickers = []
+            self.log(f"Failed to load crypto cache: {exc}")
+
+    def _write_crypto_cache(self) -> None:
+        payload = {
+            "written_at": datetime.now(timezone.utc).isoformat(),
+            "tickers": self.cached_crypto_tickers,
+        }
+        CRYPTO_CACHE_PATH.write_text(json.dumps(payload, indent=2))
+        self.last_cache_write_at = datetime.now(timezone.utc)
+
+    def _is_discoverable_crypto_market(self, market: Dict[str, Any]) -> bool:
+        ticker = str(market.get("ticker", "")).upper()
+        title = str(market.get("title") or market.get("question") or "").upper()
+        subtitle = str(market.get("subtitle") or "").upper()
+        text = f"{ticker} {title} {subtitle}"
+
+        valid_prefixes = ("KXBTC",)
+        if not ticker.startswith(valid_prefixes):
+            return False
+
+        if "PRICE" not in text:
+            return False
+
+        if not any(word in text for word in ["ABOVE", "BELOW", "AT", "-T"]):
+            return False
+
+        return True
+
+    def _refresh_crypto_cache_from_raw_markets(self, raw_markets: List[Dict[str, Any]]) -> None:
+        tickers = []
+        for m in raw_markets:
+            if self._is_discoverable_crypto_market(m):
+                t = str(m.get("ticker", "")).upper().strip()
+                if t:
+                    tickers.append(t)
+
+        self.cached_crypto_tickers = sorted(set(tickers))
+        self._write_crypto_cache()
+        self.log(f"Discovered and cached {len(self.cached_crypto_tickers)} crypto tickers.")
 
     def _normalize_market(self, market: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         ticker = str(market.get("ticker", "")).upper().strip()
@@ -667,58 +839,111 @@ class TradingBot:
         }
 
     def _classify_market(self, normalized: Dict[str, Any]) -> Dict[str, Any]:
-        text = " ".join([
-            normalized.get("ticker", ""),
-            normalized.get("title", ""),
-            normalized.get("subtitle", ""),
-            normalized.get("category", ""),
-        ])
-        asset = self._detect_symbol(text)
+        ticker = str(normalized.get("ticker", "")).upper()
+        title = str(normalized.get("title", "")).upper()
+        subtitle = str(normalized.get("subtitle", "")).upper()
+        text = f"{ticker} {title} {subtitle}"
 
-        if not asset:
-            upper = text.upper()
-            for term in self.watch_terms:
-                if term in upper:
-                    if "BTC" in term or "BITCOIN" in term:
-                        asset = "BTC"
-                        break
-                    if "ETH" in term or "ETHEREUM" in term:
-                        asset = "ETH"
-                        break
-                    if "SOL" in term or "SOLANA" in term:
-                        asset = "SOL"
-                        break
-        threshold, direction = self._parse_threshold(
-            f"{normalized.get('title', '')} {normalized.get('subtitle', '')}"
-        )
+        asset = None
+        if ticker.startswith("KXBTC"):
+            asset = "BTC"
+
+        floor_strike = normalized.get("floor_strike")
+        cap_strike = normalized.get("cap_strike")
+        strike_type = str(normalized.get("strike_type", "")).lower()
+
+        low = float(floor_strike) if floor_strike not in (None, "") else None
+        high = float(cap_strike) if cap_strike not in (None, "") else None
+
+        threshold, direction = self._parse_threshold(f"{ticker} {title} {subtitle}")
 
         market_family = "unsupported"
         parse_confidence = "low"
-        if asset and threshold and direction:
-            market_family = "price_threshold"
-            parse_confidence = "high"
-        elif asset:
-            market_family = "crypto_other"
-            parse_confidence = "medium"
+        blacklisted = False
+
+        if asset:
+            if strike_type in {"between", "range"} and low is not None and high is not None:
+                market_family = "range_bucket"
+                parse_confidence = "high"
+            elif "PRICE" in text and threshold is not None and direction is not None:
+                market_family = "price_threshold"
+                parse_confidence = "high"
 
         classified = dict(normalized)
         classified.update({
             "asset": asset,
             "threshold": threshold,
             "direction": direction,
+            "floor_strike": low,
+            "cap_strike": high,
             "market_family": market_family,
             "parse_confidence": parse_confidence,
+            "blacklisted": blacklisted,
         })
         return classified
+
+    def _log_candidate_event(self, classified: Dict[str, Any], eligible: bool, reason: str, model_prob=None, market_prob=None, edge=None) -> None:
+        try:
+            if classified.get("asset") != "BTC":
+                return
+
+            close_dt = classified.get("close_dt")
+            hours_to_expiry = None
+            if close_dt is not None:
+                hours_to_expiry = (close_dt - datetime.now(timezone.utc)).total_seconds() / 3600.0
+
+            spot = self.spot_prices.get(classified.get("asset"))
+            dist = self._threshold_distance_pct(
+                classified.get("asset"),
+                classified.get("threshold"),
+                classified.get("floor_strike"),
+                classified.get("cap_strike"),
+            )
+
+            rec = {
+                "ts": datetime.now(timezone.utc).isoformat(),
+                "ticker": classified.get("ticker"),
+                "asset": classified.get("asset"),
+                "status": classified.get("status"),
+                "market_family": classified.get("market_family"),
+                "threshold": classified.get("threshold"),
+                "direction": classified.get("direction"),
+                "floor_strike": classified.get("floor_strike"),
+                "cap_strike": classified.get("cap_strike"),
+                "spot": spot,
+                "distance_from_spot_pct": dist,
+                "hours_to_expiry": hours_to_expiry,
+                "yes_bid": classified.get("yes_bid"),
+                "yes_ask": classified.get("yes_ask"),
+                "no_bid": classified.get("no_bid"),
+                "no_ask": classified.get("no_ask"),
+                "spread": classified.get("spread"),
+                "eligible": eligible,
+                "reason": reason,
+                "model_prob": model_prob,
+                "market_prob": market_prob,
+                "edge": edge,
+            }
+
+            with CANDIDATE_LOG_PATH.open("a") as f:
+                f.write(json.dumps(rec) + "\n")
+        except Exception as exc:
+            self.log(f"candidate_log_error: {type(exc).__name__}: {exc!r}")
 
     def _evaluate_market_eligibility(self, classified: Dict[str, Any]) -> tuple[bool, str]:
         status = str(classified.get("status", "")).lower()
         if status and status not in {"open", "active", "initialized"}:
             return False, f"status_{status}"
-        if not classified.get("asset"):
-            return False, "not_crypto_asset"
-        if classified.get("market_family") != "price_threshold":
+
+        if classified.get("blacklisted"):
+            return False, "blacklisted_market"
+
+        if classified.get("asset") not in {"BTC"}:
+            return False, "unsupported_spot_asset"
+
+        if classified.get("market_family") not in {"price_threshold", "range_bucket"}:
             return False, "unsupported_market_structure"
+
         if classified.get("yes_ask") is None or classified.get("yes_bid") is None:
             return False, "missing_yes_quotes"
         if classified.get("no_ask") is None or classified.get("no_bid") is None:
@@ -729,9 +954,102 @@ class TradingBot:
             return False, "missing_spread"
         if classified.get("close_dt") is None:
             return False, "missing_expiry"
-        if classified.get("threshold") is None or classified.get("direction") is None:
-            return False, "threshold_parse_failed"
+
+        if classified.get("yes_ask") in (0.0, 1.0) and classified.get("no_ask") in (0.0, 1.0):
+            return False, "degenerate_quotes"
+
+        hours_to_expiry = (classified["close_dt"] - datetime.now(timezone.utc)).total_seconds() / 3600.0
+        if hours_to_expiry <= 0:
+            return False, "expired"
+        if hours_to_expiry < 4:
+            return False, "too_close_to_expiry"
+        if hours_to_expiry > 12:
+            return False, "too_far_to_expiry"
+
+        dist = self._threshold_distance_pct(
+            classified.get("asset"),
+            classified.get("threshold"),
+            classified.get("floor_strike"),
+            classified.get("cap_strike"),
+        )
+        if dist is None:
+            return False, "spot_not_ready"
+        if dist > 0.05:
+            return False, "too_far_from_spot"
+
         return True, "eligible"
+
+    def _norm_cdf(self, x: float) -> float:
+        import math
+        return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
+
+    def _bucket_probability(self, spot: float, low: Optional[float], high: Optional[float], hours_to_expiry: float) -> Optional[float]:
+        import math
+
+        if spot <= 0 or hours_to_expiry <= 0:
+            return None
+
+        # conservative first-pass vol assumption
+        annual_vol = 0.60
+        t = hours_to_expiry / (24.0 * 365.0)
+        sigma = annual_vol * math.sqrt(t)
+
+        if sigma <= 0:
+            return None
+
+        def z(level: float) -> float:
+            return (math.log(level / spot)) / sigma
+
+        if low is None and high is not None:
+            return self._norm_cdf(z(high))
+
+        if high is None and low is not None:
+            return 1.0 - self._norm_cdf(z(low))
+
+        if low is not None and high is not None:
+            return max(0.0, self._norm_cdf(z(high)) - self._norm_cdf(z(low)))
+
+        return None
+
+    def _threshold_distance_pct(self, asset: Optional[str], threshold: Optional[float], floor_strike: Optional[float] = None, cap_strike: Optional[float] = None) -> Optional[float]:
+        if not asset:
+            return None
+
+        raw_spot = self.spot_prices.get(asset)
+        if raw_spot is None:
+            return None
+
+        spot = float(raw_spot or 0.0)
+        if spot <= 0:
+            return None
+
+        if floor_strike is not None or cap_strike is not None:
+            low = float(floor_strike) if floor_strike is not None else None
+            high = float(cap_strike) if cap_strike is not None else None
+
+            if low is None and high is not None:
+                if spot <= high:
+                    return 0.0
+                return abs(spot - high) / spot
+
+            if high is None and low is not None:
+                if spot >= low:
+                    return 0.0
+                return abs(low - spot) / spot
+
+            if low is not None and high is not None:
+                if low <= spot <= high:
+                    return 0.0
+                if spot < low:
+                    return abs(low - spot) / spot
+                return abs(spot - high) / spot
+
+            return None
+
+        if threshold is None:
+            return None
+
+        return abs(float(threshold) - spot) / spot
 
     def _classified_to_snapshot(self, classified: Dict[str, Any]) -> Optional[MarketSnapshot]:
         return MarketSnapshot(
@@ -868,6 +1186,19 @@ class TradingBot:
             strategy = self.strategy_states[intent.strategy]
             cooldown_key = f"{strategy.name}:{snapshot.ticker}"
             self.cooldowns[cooldown_key] = datetime.now(timezone.utc)
+
+            
+            bankroll = self.effective_bankroll()
+            total_exposure = 0
+            with SessionLocal() as db:
+                trades = db.query(Trade).filter(Trade.status.in_(["filled","submitted","pending"])).all()
+                for t in trades:
+                    if t.fill_price and t.contracts:
+                        total_exposure += float(t.fill_price) * float(t.contracts)
+
+            if total_exposure > bankroll * 0.05:
+                self.log("Skipped: total exposure cap reached (5%).")
+                return
 
             shadow_result = await self.paper_broker.execute(intent, snapshot)
             self._store_trade(intent, "paper" if self.paper_mode else "shadow", shadow_result, not self.paper_mode)
@@ -1060,6 +1391,9 @@ class TradingBot:
                 "normalized_markets": self.normalized_market_count,
                 "classified_crypto_markets": self.classified_market_count,
                 "eligible_markets": self.eligible_market_count,
+                "cached_crypto_ticker_count": len(self.cached_crypto_tickers),
+                "watch_cursor": self.watch_cursor,
+                "watch_refresh_limit": self.watch_refresh_limit,
                 "rejections": dict(self.market_rejections),
                 "rejection_examples": self.market_rejection_examples,
                 "raw_market_samples": self.raw_market_samples,

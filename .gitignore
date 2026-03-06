@@ -3,3 +3,16 @@ trading_session.log
 __pycache__/
 *.pyc
 .env
+# Runtime data
+data/
+*.db
+*.jsonl
+*.csv
+
+# Local configs
+.env
+bot_settings.json
+
+# Temp / backups
+actions-runner/
+backup_before_fix/

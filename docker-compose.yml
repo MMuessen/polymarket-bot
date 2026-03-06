@@ -22,4 +22,6 @@ services:
       - "8000:8000"
     volumes:
       - .:/app
+      - ./data:/app/data
+      - ./kalshi_private_key.pem:/app/kalshi_private_key.pem:ro
     restart: always

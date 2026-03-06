@@ -85,7 +85,7 @@
             </button>
           </div>
         </div>
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
           <div class="glass rounded-xl px-4 py-3">
             <div class="text-xs text-slate-400 uppercase">Mode</div>
             <div id="modeBadge" class="text-xl font-semibold">-</div>
@@ -95,6 +95,14 @@
             <div id="armBadge" class="text-xl font-semibold">-</div>
           </div>
           <div class="glass rounded-xl px-4 py-3">
+            <div class="text-xs text-slate-400 uppercase">Real Cash</div>
+            <div id="cashCard" class="text-xl font-semibold mono">$0.00</div>
+          </div>
+          <div class="glass rounded-xl px-4 py-3">
+            <div class="text-xs text-slate-400 uppercase">Real Portfolio</div>
+            <div id="portfolioCard" class="text-xl font-semibold mono">$0.00</div>
+          </div>
+          <div class="glass rounded-xl px-4 py-3">
             <div class="text-xs text-slate-400 uppercase">Paper Equity</div>
             <div id="paperEquityCard" class="text-xl font-semibold mono">$0.00</div>
           </div>
@@ -102,10 +110,9 @@
             <div class="text-xs text-slate-400 uppercase">Paper PnL</div>
             <div id="paperPnlCard" class="text-xl font-semibold mono">$0.00</div>
           </div>
-          <div class="glass rounded-xl px-4 py-3">
-            <div class="text-xs text-slate-400 uppercase">Top Edge</div>
-            <div id="edgeCard" class="text-xl font-semibold mono">0.0%</div>
-          </div>
+        </div>
+        <div class="mt-3 text-sm text-slate-400">
+          Top Edge: <span id="edgeCard" class="mono text-slate-200">0.0%</span>
         </div>
       </div>
     </div>
@@ -394,6 +401,8 @@
       document.getElementById("armBadge").textContent = data.live_armed ? "ARMED" : "DISARMED";
       document.getElementById("armBadge").className = data.live_armed ? "text-xl font-semibold warn" : "text-xl font-semibold text-slate-500";
 
+      document.getElementById("cashCard").textContent = money(data.balances?.kalshi_balance ?? 0);
+      document.getElementById("portfolioCard").textContent = money(data.balances?.portfolio_value ?? 0);
       document.getElementById("paperEquityCard").textContent = money(data.paper?.equity ?? 0);
       document.getElementById("paperPnlCard").textContent = money(data.paper?.unrealized_pnl ?? 0);
       document.getElementById("paperPnlCard").className =
