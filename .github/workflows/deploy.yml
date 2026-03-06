@@ -14,4 +14,4 @@ jobs:
         run: |
           cd /home/agent/polymarket-bot
           # Modern command: no hyphen in compose, -d is after the 'up' verb
-          sudo docker compose up -d --build --force-recreate
+          sudo docker-compose up -d --build
