@@ -13,7 +13,6 @@ jobs:
       - name: Rapid Hot-Reload
         run: |
           cd /home/agent/polymarket-bot
-          # Modern command using 'docker compose' (no hyphen)
+          # This exact sequence is required: docker, then compose, then up, then flags
           sudo docker compose up -d --build --force-recreate
-          # Cleanup to keep the Dell server fast
           sudo docker image prune -f
