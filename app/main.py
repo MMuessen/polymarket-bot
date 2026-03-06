@@ -1,311 +1,846 @@
-import os
-import time
 import asyncio
-import json
-from datetime import datetime, timedelta
-from typing import Dict, List
+import base64
+import math
+import os
+import re
+import uuid
+from collections import deque
+from contextlib import asynccontextmanager
+from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Deque, Dict, List, Optional
+
 import aiohttp
-import feedparser
-from fastapi import FastAPI, Request, Form
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, Column, Integer, Float, String, DateTime, Boolean
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel, Field
+from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, Text, create_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 load_dotenv()
 
-app = FastAPI()
-templates = Jinja2Templates(directory="app/templates")
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent
+DATA_DIR = PROJECT_ROOT / "data"
+STATIC_DIR = BASE_DIR / "static"
+TEMPLATE_DIR = BASE_DIR / "templates"
 
-# DB
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+STATIC_DIR.mkdir(parents=True, exist_ok=True)
+TEMPLATE_DIR.mkdir(parents=True, exist_ok=True)
+
+DB_PATH = DATA_DIR / "trades.db"
+
+engine = create_engine(f"sqlite:///{DB_PATH}", connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 Base = declarative_base()
-engine = create_engine('sqlite:///data/trades.db')
-Session = sessionmaker(bind=engine)
+
 
 class Trade(Base):
-    __tablename__ = 'trades'
-    id = Column(Integer, primary_key=True)
-    platform = Column(String, default='kalshi')
-    strat = Column(String)
-    market_id = Column(String)
-    side = Column(String)
-    size = Column(Float)
-    entry_price = Column(Float)
-    pnl = Column(Float)
-    paper = Column(Boolean)
-    timestamp = Column(DateTime, default=datetime.utcnow)
-    status = Column(String, default='open')
-    exit_price = Column(Float)
-    hold_time = Column(Float)
+    __tablename__ = "trades"
 
-Base.metadata.create_all(engine)
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    shadow_group_id = Column(String, nullable=True)
+    intent_id = Column(String, nullable=False, unique=True)
+    mode = Column(String, nullable=False)
+    broker = Column(String, nullable=False)
+    strategy = Column(String, nullable=False)
+    ticker = Column(String, nullable=False)
+    title = Column(String, nullable=True)
+    side = Column(String, nullable=False)
+    action = Column(String, nullable=False)
+    contracts = Column(Float, nullable=False)
+    requested_price = Column(Float, nullable=False)
+    fill_price = Column(Float, nullable=True)
+    fair_value = Column(Float, nullable=True)
+    edge = Column(Float, nullable=True)
+    spot_symbol = Column(String, nullable=True)
+    spot_price = Column(Float, nullable=True)
+    status = Column(String, nullable=False, default="pending")
+    external_order_id = Column(String, nullable=True)
+    message = Column(Text, nullable=True)
+    is_shadow = Column(Boolean, default=False, nullable=False)
 
-class RichBot:
-    def __init__(self):
-        self.paper_mode = os.getenv("PAPER_MODE", "true").lower() == "true"
-        self.ollama_url = "http://192.168.1.249:11434"
-        self.ollama_model = os.getenv("OLLAMA_MODEL", "llama3.2")
-        self.mode = os.getenv("MODE", "kalshi").lower()
-        self.strats = {
-            'crypto_lag': {'paper': True, 'live': False, 'perf': {'trades':0, 'wins':0, 'pnl':0, 'ema_hold_win':60.0, 'ema_hold_loss':60.0}, 'risk':0.004, 'dynamic_interval':60, 'dynamic_profit':0.02, 'dynamic_stop':-0.015},
-            'sentiment': {'paper': True, 'live': False, 'perf': {'trades':0, 'wins':0, 'pnl':0, 'ema_hold_win':60.0, 'ema_hold_loss':60.0}, 'risk':0.004, 'dynamic_interval':60, 'dynamic_profit':0.02, 'dynamic_stop':-0.015},
+
+Base.metadata.create_all(bind=engine)
+
+
+@dataclass
+class StrategyState:
+    name: str
+    enabled: bool
+    live_enabled: bool
+    min_edge: float
+    max_spread: float
+    max_ticket_dollars: float
+    cooldown_seconds: int
+    max_hours_to_expiry: int
+    min_hours_to_expiry: float
+    perf_trades: int = 0
+    perf_wins: int = 0
+    perf_pnl: float = 0.0
+    last_signal_at: Optional[str] = None
+    last_signal_reason: str = ""
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class MarketSnapshot:
+    ticker: str
+    title: str
+    subtitle: str
+    category: str
+    yes_bid: Optional[float]
+    yes_ask: Optional[float]
+    no_bid: Optional[float]
+    no_ask: Optional[float]
+    last_price: Optional[float]
+    mid: Optional[float]
+    spread: Optional[float]
+    close_time: Optional[str]
+    raw_close_time: Optional[datetime]
+    volume_24h: Optional[float]
+    liquidity: Optional[float]
+    status: str
+    spot_symbol: Optional[str] = None
+    threshold: Optional[float] = None
+    direction: Optional[str] = None
+    fair_yes: Optional[float] = None
+    edge: Optional[float] = None
+    rationale: str = ""
+
+    def to_dict(self) -> Dict[str, Any]:
+        payload = asdict(self)
+        payload["raw_close_time"] = self.close_time
+        return payload
+
+
+@dataclass
+class OrderIntent:
+    intent_id: str
+    shadow_group_id: str
+    strategy: str
+    broker: str
+    ticker: str
+    title: str
+    side: str
+    action: str
+    contracts: float
+    requested_price: float
+    fair_value: float
+    edge: float
+    spot_symbol: Optional[str]
+    spot_price: Optional[float]
+    rationale: str
+
+
+class ModeUpdate(BaseModel):
+    mode: str = Field(pattern="^(paper|live)$")
+
+
+class ArmLiveUpdate(BaseModel):
+    armed: bool
+
+
+class StrategyUpdate(BaseModel):
+    enabled: bool
+    live_enabled: Optional[bool] = None
+
+
+class KalshiClient:
+    def __init__(self) -> None:
+        self.base_url = os.getenv("KALSHI_BASE_URL", "https://demo-api.kalshi.co/trade-api/v2").rstrip("/")
+        self.api_key_id = os.getenv("KALSHI_API_KEY_ID", "").strip()
+        self.private_key_path = os.getenv("KALSHI_PRIVATE_KEY_PATH", "").strip()
+        self.private_key = self._load_private_key(self.private_key_path) if self.private_key_path else None
+
+    @property
+    def trading_enabled(self) -> bool:
+        return bool(self.api_key_id and self.private_key)
+
+    def _load_private_key(self, path: str):
+        try:
+            with open(path, "rb") as f:
+                return serialization.load_pem_private_key(
+                    f.read(), password=None, backend=default_backend()
+                )
+        except FileNotFoundError:
+            return None
+
+    def _sign_headers(self, method: str, path: str) -> Dict[str, str]:
+        if not self.trading_enabled:
+            raise RuntimeError("Kalshi credentials missing.")
+        timestamp = str(int(datetime.now(timezone.utc).timestamp() * 1000))
+        path_no_query = path.split("?", 1)[0]
+        message = f"{timestamp}{method.upper()}{path_no_query}".encode("utf-8")
+        signature = self.private_key.sign(
+            message,
+            padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.DIGEST_LENGTH),
+            hashes.SHA256(),
+        )
+        return {
+            "KALSHI-ACCESS-KEY": self.api_key_id,
+            "KALSHI-ACCESS-TIMESTAMP": timestamp,
+            "KALSHI-ACCESS-SIGNATURE": base64.b64encode(signature).decode("utf-8"),
         }
-        self.balance_poly = 0.0
-        self.balance_kalshi = 0.0
-        self.deposits_lifetime = 0.0
-        self.withdraws_lifetime = 0.0
-        self.exposure = 0.0
-        self.loss_hour = 0.0
-        self.last_hour = datetime.now()
-        self.binance_prices = {'BTC': 0, 'ETH': 0, 'SOL': 0}
-        self.kalshi_prices = {}
-        self.rss_urls = ["https://cointelegraph.com/rss", "https://cryptopotato.com/feed/"]
-        self.positions = []
-        self.load_positions()
-        asyncio.create_task(self.init_ollama())
-        asyncio.create_task(self.poll_binance_prices())
-        asyncio.create_task(self.poll_kalshi_markets())
-        asyncio.create_task(self.monitor_closes())
-        asyncio.create_task(self.update_balances())
-        asyncio.create_task(self.test_paper_trade())  # Added for immediate paper testing
-        print("🚀 Kalshi-Only Bot Started")
 
-    def load_positions(self):
-        with Session() as session:
-            self.positions = session.query(Trade).filter(Trade.status == 'open').all()
+    async def get_json(self, session: aiohttp.ClientSession, path: str, auth: bool = False) -> Dict[str, Any]:
+        headers: Dict[str, str] = {}
+        if auth:
+            headers.update(self._sign_headers("GET", path))
+        async with session.get(f"{self.base_url}{path}", headers=headers, timeout=30) as resp:
+            text = await resp.text()
+            if resp.status >= 400:
+                raise RuntimeError(f"Kalshi GET {path} failed ({resp.status}): {text[:300]}")
+            return {} if not text else await resp.json()
 
-    async def init_ollama(self):
-        async with aiohttp.ClientSession() as session:
-            try:
-                async with session.get(f"{self.ollama_url}") as resp:
-                    print("Ollama health check:", await resp.text())
-            except Exception as e:
-                print("Ollama connection failed:", str(e))
+    async def post_json(
+        self,
+        session: aiohttp.ClientSession,
+        path: str,
+        payload: Dict[str, Any],
+        auth: bool = True,
+    ) -> Dict[str, Any]:
+        headers = {"Content-Type": "application/json"}
+        if auth:
+            headers.update(self._sign_headers("POST", path))
+        async with session.post(f"{self.base_url}{path}", json=payload, headers=headers, timeout=30) as resp:
+            text = await resp.text()
+            if resp.status >= 400:
+                raise RuntimeError(f"Kalshi POST {path} failed ({resp.status}): {text[:300]}")
+            return {} if not text else await resp.json()
 
-    async def ollama_sentiment(self, text):
-        messages = [{"role": "user", "content": f"Analyze sentiment: positive, negative, or neutral? Respond only with the word: {text[:500]}"}]
-        async with aiohttp.ClientSession() as session:
-            try:
-                async with session.post(f"{self.ollama_url}/api/chat", json={"model": self.ollama_model, "messages": messages, "stream": False}) as resp:
-                    data = await resp.json()
-                    return data.get('message', {}).get('content', 'neutral').strip().lower()
-            except Exception as e:
-                print("Ollama sentiment error:", str(e))
-                return "neutral"
 
-    async def update_balances(self):
-        while True:
-            try:
-                # Real Kalshi balance fetch - replace with SDK if available
-                url = "https://api.elections.kalshi.com/trade-api/v2/balance"  # Placeholder - check docs
-                headers = {"Authorization": f"Bearer {os.getenv('KALSHI_API_KEY_ID')}"}
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(url, headers=headers) as resp:
-                        if resp.status == 200:
-                            data = await resp.json()
-                            self.balance_kalshi = data.get('balance', 0.0)
-                            print(f"Updated Kalshi balance: ${self.balance_kalshi:.2f}")
-                        else:
-                            print("Balance fetch failed:", resp.status)
-            except Exception as e:
-                print("Balance update failed:", str(e))
-            await asyncio.sleep(60)
+class PaperBroker:
+    async def execute(self, intent: OrderIntent, snapshot: MarketSnapshot) -> Dict[str, Any]:
+        return {
+            "status": "filled",
+            "fill_price": round(intent.requested_price, 4),
+            "external_order_id": f"paper-{intent.intent_id}",
+            "message": "Paper fill from current quote snapshot.",
+        }
 
-    async def poll_binance_prices(self):
-        coins = ['bitcoin', 'ethereum', 'solana']
-        while True:
-            try:
-                async with aiohttp.ClientSession() as session:
-                    url = f"https://api.coingecko.com/api/v3/simple/price?ids={','.join(coins)}&vs_currencies=usd"
-                    async with session.get(url) as resp:
-                        if resp.status == 200:
-                            data = await resp.json()
-                            for coin in coins:
-                                price = data.get(coin, {}).get('usd', 0)
-                                sym = coin.upper()[:3]  # BTC, ETH, SOL
-                                self.binance_prices[sym] = price
-                                print(f"CoinGecko update: {sym} = ${price:,.0f}")
-                                await self.check_opps(sym)
-                        else:
-                            print(f"CoinGecko fetch failed: {resp.status}")
-            except Exception as e:
-                print("Price poll error:", str(e))
-            await asyncio.sleep(10)
 
-    async def poll_kalshi_markets(self):
-        url = "https://api.elections.kalshi.com/trade-api/v2/markets?limit=200"
-        headers = {"Authorization": f"Bearer {os.getenv('KALSHI_API_KEY_ID')}"}
-        async with aiohttp.ClientSession() as session:
-            while True:
-                try:
-                    async with session.get(url, headers=headers) as resp:
-                        if resp.status == 200:
-                            data = await resp.json()
-                            found = 0
-                            sample_tickers = []
-                            sample_questions = []
-                            sample_categories = []
-                            for m in data.get('markets', []):
-                                ticker = m.get('ticker', '').upper()
-                                question = m.get('question', '').upper()
-                                category = m.get('category', '').upper()
-                                sample_tickers.append(ticker[:30])
-                                sample_questions.append(question[:50])
-                                sample_categories.append(category)
-                                if any(x in ticker or x in question or x in category for x in ['BTC', 'BITCOIN', 'ETH', 'ETHEREUM', 'SOL', 'SOLANA', 'CRYPTO']):
-                                    found += 1
-                                    yes_bid = m.get('yes_bid', 0) or 0
-                                    yes_ask = m.get('yes_ask', 0) or 0
-                                    mid = (yes_bid + yes_ask) / 200
-                                    self.kalshi_prices[ticker] = mid
-                                    print(f"Kalshi crypto market: {ticker} ({question[:50]}) mid-price {mid:.4f} (category: {category})")
-                            print(f"Kalshi poll OK - found {found} crypto markets (total {len(data.get('markets', []))} markets)")
-                            if found == 0:
-                                print(f"Sample tickers (first 5): {sample_tickers[:5]}")
-                                print(f"Sample questions (first 5): {sample_questions[:5]}")
-                                print(f"Sample categories (first 5): {sample_categories[:5]}")
-                        else:
-                            text = await resp.text()
-                            print(f"Kalshi poll failed - status {resp.status}: {text}")
-                except Exception as e:
-                    print("Kalshi poll exception:", str(e))
-                await asyncio.sleep(10)
+class LiveKalshiBroker:
+    def __init__(self, client: KalshiClient) -> None:
+        self.client = client
 
-    async def scan_sentiment_opps(self):
-        opps = []
-        print("Scanning RSS for sentiment...")
-        for url in self.rss_urls:
-            feed = feedparser.parse(url)
-            for entry in feed.entries[:5]:
-                age = datetime.now() - datetime(*entry.published_parsed[:6])
-                if age < timedelta(minutes=15):
-                    print(f"Recent news: {entry.title[:50]}...")
-                    sentiment = await self.ollama_sentiment(entry.title + " " + (entry.summary or ""))
-                    print(f"  → Sentiment: {sentiment}")
-                    if sentiment == "positive":
-                        opps.append(('sentiment_up', 'EXAMPLE_KALSHI_MARKET_ID', 'BUY', 5.0))
-                    elif sentiment == "negative":
-                        opps.append(('sentiment_down', 'EXAMPLE_KALSHI_MARKET_ID', 'SELL', 5.0))
-        print(f"Found {len(opps)} sentiment opportunities")
-        return opps
-
-    async def test_paper_trade(self):
-        while True:
-            await asyncio.sleep(60)
-            print("Test trigger: Simulating a positive sentiment opp")
-            await self.execute('sentiment_up', 'kalshi', 'TEST_MARKET_ID', 'BUY', 5.0)
-
-    async def check_opps(self, sym):
-        sent_opps = await self.scan_sentiment_opps()
-        for opp in sent_opps:
-            strat = opp[0]
-            market_id = opp[1]
-            side = opp[2]
-            size = opp[3]
-            await self.execute(strat, 'kalshi', market_id, side, size)
-
-    async def execute(self, strat, platform, market_id, side, size):
-        entry_p = await self.get_current_price(platform, market_id)
-        trade = Trade(platform=platform, strat=strat, market_id=market_id, side=side, size=size, entry_price=entry_p, paper=self.paper_mode)
-        with Session() as session:
-            session.add(trade)
-            session.commit()
-        self.positions.append(trade)
-        if self.paper_mode:
-            await asyncio.sleep(2)
-            exit_p = entry_p * 1.02 if side == 'BUY' else entry_p * 0.98
-            pnl = size * (exit_p - entry_p) if side == 'BUY' else size * (entry_p - exit_p)
-            print(f"📝 PAPER {strat} | Entry: {entry_p:.4f} | Exit: {exit_p:.4f} | PNL: ${pnl:.2f}")
+    async def execute(self, session: aiohttp.ClientSession, intent: OrderIntent) -> Dict[str, Any]:
+        payload: Dict[str, Any] = {
+            "ticker": intent.ticker,
+            "side": intent.side,
+            "action": intent.action,
+            "client_order_id": intent.intent_id,
+            "count": max(1, int(round(intent.contracts))),
+            "time_in_force": "fill_or_kill",
+        }
+        if intent.side == "yes":
+            payload["yes_price_dollars"] = f"{intent.requested_price:.4f}"
         else:
-            print(f"✅ REAL KALSHI {strat} executed (placeholder)")
-        return trade
+            payload["no_price_dollars"] = f"{intent.requested_price:.4f}"
 
-    async def monitor_closes(self):
+        response = await self.client.post_json(session, "/portfolio/orders", payload, auth=True)
+        order = response.get("order", response)
+        status = str(order.get("status", "submitted")).lower()
+        fill_price = self._extract_fill_price(order, intent.requested_price)
+        return {
+            "status": status,
+            "fill_price": fill_price,
+            "external_order_id": order.get("order_id") or order.get("client_order_id"),
+            "message": response.get("message") or "Kalshi order submitted.",
+        }
+
+    @staticmethod
+    def _extract_fill_price(order: Dict[str, Any], fallback: float) -> Optional[float]:
+        for key in ("yes_price_dollars", "no_price_dollars", "taker_fill_cost_dollars", "maker_fill_cost_dollars"):
+            value = order.get(key)
+            if value not in (None, ""):
+                try:
+                    return float(value)
+                except (TypeError, ValueError):
+                    pass
+        return fallback
+
+
+class TradingBot:
+    NUMBER_RE = re.compile(r"\$?([0-9]{1,3}(?:,[0-9]{3})+(?:\.\d+)?|[0-9]+(?:\.\d+)?)")
+
+    def __init__(self) -> None:
+        self.paper_mode = os.getenv("PAPER_MODE", "true").lower() == "true"
+        self.live_armed = os.getenv("ARM_LIVE_TRADING", "false").lower() == "true"
+        self.poll_seconds = max(5, int(os.getenv("POLL_SECONDS", "15")))
+        self.max_markets = max(10, int(os.getenv("MAX_MARKETS", "200")))
+        self.watch_terms = [t.strip().upper() for t in os.getenv(
+            "WATCH_TERMS", "BTC,BITCOIN,ETH,ETHEREUM,SOL,SOLANA,CRYPTO"
+        ).split(",") if t.strip()]
+
+        self.logs: Deque[str] = deque(maxlen=300)
+        self.market_snapshots: Dict[str, MarketSnapshot] = {}
+        self.spot_prices: Dict[str, float] = {"BTC": 0.0, "ETH": 0.0, "SOL": 0.0}
+        self.health: Dict[str, Any] = {
+            "last_market_refresh": None,
+            "last_spot_refresh": None,
+            "last_balance_refresh": None,
+            "loop_error": None,
+        }
+        self.strategy_states: Dict[str, StrategyState] = {
+            "crypto_lag": StrategyState(
+                name="crypto_lag",
+                enabled=True,
+                live_enabled=False,
+                min_edge=0.09,
+                max_spread=0.08,
+                max_ticket_dollars=float(os.getenv("MAX_TICKET_DOLLARS", "25")),
+                cooldown_seconds=900,
+                max_hours_to_expiry=168,
+                min_hours_to_expiry=1,
+            ),
+            "sentiment": StrategyState(
+                name="sentiment",
+                enabled=False,
+                live_enabled=False,
+                min_edge=0.12,
+                max_spread=0.10,
+                max_ticket_dollars=float(os.getenv("MAX_TICKET_DOLLARS", "25")),
+                cooldown_seconds=1800,
+                max_hours_to_expiry=48,
+                min_hours_to_expiry=1,
+            ),
+        }
+        self.cooldowns: Dict[str, datetime] = {}
+        self.kalshi_balance: float = 0.0
+        self.portfolio_value: float = 0.0
+        self.session: Optional[aiohttp.ClientSession] = None
+        self.loop_task: Optional[asyncio.Task] = None
+        self._lock = asyncio.Lock()
+        self.kalshi_client = KalshiClient()
+        self.paper_broker = PaperBroker()
+        self.live_broker = LiveKalshiBroker(self.kalshi_client)
+        self.log("Bot initialized. Live is disarmed.")
+
+    def log(self, message: str) -> None:
+        stamp = datetime.now().strftime("%H:%M:%S")
+        self.logs.appendleft(f"[{stamp}] {message}")
+
+    async def start(self) -> None:
+        self._migrate_db()
+        if self.session is None:
+            self.session = aiohttp.ClientSession()
+        if self.loop_task is None or self.loop_task.done():
+            self.loop_task = asyncio.create_task(self._main_loop())
+        self.log("Background loop started.")
+
+    async def stop(self) -> None:
+        if self.loop_task:
+            self.loop_task.cancel()
+            try:
+                await self.loop_task
+            except asyncio.CancelledError:
+                pass
+            self.loop_task = None
+        if self.session:
+            await self.session.close()
+            self.session = None
+        self.log("Background loop stopped.")
+
+    def _migrate_db(self) -> None:
+        import sqlite3
+
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='trades'")
+        exists = cur.fetchone()
+        if exists:
+            cur.execute("PRAGMA table_info(trades)")
+            cols = {row[1] for row in cur.fetchall()}
+            required = {"created_at", "updated_at", "shadow_group_id", "intent_id", "strategy"}
+            if not required.issubset(cols):
+                cur.execute("DROP TABLE trades")
+                conn.commit()
+        conn.close()
+        Base.metadata.create_all(bind=engine)
+
+    async def _main_loop(self) -> None:
+        assert self.session is not None
         while True:
-            for strat, s in self.strats.items():
-                for pos in [p for p in self.positions if p.strat == strat and p.status == 'open'][:]:
-                    current_p = await self.get_current_price(pos.platform, pos.market_id)
-                    pnl_pct = (current_p - pos.entry_price) / pos.entry_price if pos.side == 'BUY' else (pos.entry_price - current_p) / pos.entry_price
-                    pred_hold = await self.ollama_predict_hold(pos.market_id)
-                    hold_elapsed = (datetime.now() - pos.timestamp).total_seconds()
-                    if hold_elapsed > pred_hold * 1.5:
-                        await self.close_position(pos, current_p)
-                        self.positions.remove(pos)
-                        continue
-                    sent = await self.ollama_sentiment(f"Current sentiment for {pos.market_id}")
-                    flip = (sent == 'negative' and pos.side == 'BUY') or (sent == 'positive' and pos.side == 'SELL')
-                    expiry_min = await self.get_expiry_min(pos.platform, pos.market_id)
-                    if pnl_pct > s['dynamic_profit'] or pnl_pct < s['dynamic_stop'] or flip or expiry_min < 2:
-                        await self.close_position(pos, current_p)
-                        self.positions.remove(pos)
-            await asyncio.sleep(30)
+            try:
+                await self.refresh_spots()
+                await self.refresh_markets()
+                await self.refresh_balance()
+                await self.run_strategies()
+                self.health["loop_error"] = None
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                self.health["loop_error"] = str(exc)
+                self.log(f"Loop error: {exc}")
+            await asyncio.sleep(self.poll_seconds)
 
-    async def get_current_price(self, platform, market_id):
-        return self.kalshi_prices.get(market_id, 0.5)
+    async def refresh_spots(self) -> None:
+        assert self.session is not None
+        url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana&vs_currencies=usd"
+        async with self.session.get(url, timeout=30) as resp:
+            data = await resp.json()
+        self.spot_prices = {
+            "BTC": float(data.get("bitcoin", {}).get("usd", 0.0)),
+            "ETH": float(data.get("ethereum", {}).get("usd", 0.0)),
+            "SOL": float(data.get("solana", {}).get("usd", 0.0)),
+        }
+        self.health["last_spot_refresh"] = datetime.now(timezone.utc).isoformat()
 
-    async def get_expiry_min(self, platform, market_id):
-        return 5
+    async def refresh_markets(self) -> None:
+        assert self.session is not None
+        data = await self.kalshi_client.get_json(self.session, f"/markets?status=open&limit={self.max_markets}")
+        markets = data.get("markets", [])
+        filtered: Dict[str, MarketSnapshot] = {}
+        for market in markets:
+            text = f"{market.get('ticker', '')} {market.get('title', '')} {market.get('subtitle', '')} {market.get('category', '')}".upper()
+            if not any(term in text for term in self.watch_terms):
+                continue
+            snapshot = self._market_to_snapshot(market)
+            if snapshot:
+                filtered[snapshot.ticker] = snapshot
+        self.market_snapshots = filtered
+        self.health["last_market_refresh"] = datetime.now(timezone.utc).isoformat()
+        self.log(f"Watching {len(filtered)} crypto-related markets.")
 
-    async def close_position(self, pos, exit_p):
-        pnl = pos.size * (exit_p - pos.entry_price) if pos.side == 'BUY' else pos.size * (pos.entry_price - exit_p)
-        pos.pnl = pnl
-        pos.exit_price = exit_p
-        pos.hold_time = (datetime.now() - pos.timestamp).total_seconds()
-        pos.status = 'closed'
-        with Session() as session:
-            session.merge(pos)
-            session.commit()
-        self.update_perf(pos.strat, pnl)
+    async def refresh_balance(self) -> None:
+        if not self.kalshi_client.trading_enabled or self.session is None:
+            return
+        try:
+            data = await self.kalshi_client.get_json(self.session, "/portfolio/balance", auth=True)
+            self.kalshi_balance = round(float(data.get("balance", 0)) / 100.0, 2)
+            self.portfolio_value = round(float(data.get("portfolio_value", 0)) / 100.0, 2)
+            self.health["last_balance_refresh"] = datetime.now(timezone.utc).isoformat()
+        except Exception as exc:
+            self.log(f"Balance refresh failed: {exc}")
 
-    def update_perf(self, strat, pnl):
-        s = self.strats[strat]
-        s['perf']['trades'] += 1
-        if pnl > 0:
-            s['perf']['wins'] += 1
-        s['perf']['pnl'] += pnl
-        alpha = 0.1
-        ema_key = 'ema_hold_win' if pnl > 0 else 'ema_hold_loss'
-        s['perf'][ema_key] = alpha * pos.hold_time + (1 - alpha) * s['perf'][ema_key]
-        if s['perf']['trades'] % 20 == 0 and s['perf']['trades'] > 0:
-            ema_win = s['perf']['ema_hold_win']
-            ema_loss = s['perf']['ema_hold_loss']
-            s['dynamic_interval'] = max(10, min(120, ema_win * 1.2 if ema_win < ema_loss else ema_loss * 0.8))
-            s['dynamic_profit'] = 0.015 if ema_win < 30 else 0.025
-            s['dynamic_stop'] = -0.02 if ema_loss > 90 else -0.012
-            print(f"🔥 ADAPTED {strat}: Interval={s['dynamic_interval']}s, Profit={s['dynamic_profit']*100}%, Stop={s['dynamic_stop']*100}%")
+    def _market_to_snapshot(self, market: Dict[str, Any]) -> Optional[MarketSnapshot]:
+        ticker = str(market.get("ticker", "")).upper().strip()
+        if not ticker:
+            return None
+        title = str(market.get("title") or market.get("question") or ticker)
+        subtitle = str(market.get("subtitle") or market.get("rules_primary") or "")
+        category = str(market.get("category") or "")
+        yes_bid = self._price_to_float(market.get("yes_bid_dollars"), market.get("yes_bid"))
+        yes_ask = self._price_to_float(market.get("yes_ask_dollars"), market.get("yes_ask"))
+        no_bid = self._price_to_float(market.get("no_bid_dollars"), market.get("no_bid"))
+        no_ask = self._price_to_float(market.get("no_ask_dollars"), market.get("no_ask"))
+        last_price = self._price_to_float(market.get("last_price_dollars"), market.get("last_price"))
 
-bot = RichBot()
+        mid = None
+        if yes_bid is not None and yes_ask is not None:
+            mid = round((yes_bid + yes_ask) / 2.0, 4)
+        elif last_price is not None:
+            mid = last_price
+
+        spread = None
+        if yes_bid is not None and yes_ask is not None:
+            spread = round(max(0.0, yes_ask - yes_bid), 4)
+
+        close_dt = self._parse_dt(market.get("close_time") or market.get("expiration_time"))
+        symbol = self._detect_symbol(title + " " + subtitle + " " + ticker)
+        threshold, direction = self._parse_threshold(title + " " + subtitle)
+
+        return MarketSnapshot(
+            ticker=ticker,
+            title=title,
+            subtitle=subtitle,
+            category=category,
+            yes_bid=yes_bid,
+            yes_ask=yes_ask,
+            no_bid=no_bid,
+            no_ask=no_ask,
+            last_price=last_price,
+            mid=mid,
+            spread=spread,
+            close_time=close_dt.isoformat() if close_dt else None,
+            raw_close_time=close_dt,
+            volume_24h=self._float_or_none(market.get("volume_24h_fp") or market.get("volume_24h")),
+            liquidity=self._price_to_float(market.get("liquidity_dollars"), market.get("liquidity")),
+            status=str(market.get("status") or "unknown"),
+            spot_symbol=symbol,
+            threshold=threshold,
+            direction=direction,
+        )
+
+    async def run_strategies(self) -> None:
+        for snapshot in list(self.market_snapshots.values()):
+            self._enrich_with_fair_value(snapshot)
+            for strategy in self.strategy_states.values():
+                if not strategy.enabled:
+                    continue
+                intent = self._generate_intent(strategy, snapshot)
+                if intent is None:
+                    continue
+                await self._submit_intent(intent, snapshot)
+
+    def _enrich_with_fair_value(self, snapshot: MarketSnapshot) -> None:
+        if not snapshot.spot_symbol or not snapshot.threshold or not snapshot.direction:
+            snapshot.rationale = "Skipped: couldn't parse market into simple above/below threshold."
+            return
+        spot = self.spot_prices.get(snapshot.spot_symbol, 0.0)
+        if spot <= 0:
+            snapshot.rationale = f"Skipped: no spot for {snapshot.spot_symbol}."
+            return
+        if not snapshot.raw_close_time:
+            snapshot.rationale = "Skipped: close time missing."
+            return
+
+        hours = max((snapshot.raw_close_time - datetime.now(timezone.utc)).total_seconds() / 3600.0, 0.0)
+        if hours <= 0:
+            snapshot.rationale = "Skipped: market expired."
+            return
+
+        sigma_ann = {"BTC": 0.65, "ETH": 0.85, "SOL": 1.20}.get(snapshot.spot_symbol, 0.90)
+        sigma_horizon = max(sigma_ann * math.sqrt(hours / (365.0 * 24.0)), 0.04)
+        z = math.log(max(spot, 1e-9) / max(snapshot.threshold, 1e-9)) / sigma_horizon
+        p_above = 1.0 / (1.0 + math.exp(-1.702 * z))
+        fair_yes = p_above if snapshot.direction == "above" else 1.0 - p_above
+        fair_yes = min(0.98, max(0.02, fair_yes))
+        snapshot.fair_yes = round(fair_yes, 4)
+        if snapshot.mid is not None:
+            snapshot.edge = round(snapshot.fair_yes - snapshot.mid, 4)
+        snapshot.rationale = (
+            f"{snapshot.spot_symbol} ${spot:,.0f} vs threshold ${snapshot.threshold:,.0f}; "
+            f"fair YES {snapshot.fair_yes:.3f}"
+        )
+
+    def _generate_intent(self, strategy: StrategyState, snapshot: MarketSnapshot) -> Optional[OrderIntent]:
+        now = datetime.now(timezone.utc)
+        strategy.last_signal_at = now.isoformat()
+        strategy.last_signal_reason = snapshot.rationale
+
+        if strategy.name != "crypto_lag":
+            return None
+        if snapshot.mid is None or snapshot.fair_yes is None or snapshot.edge is None:
+            return None
+        if snapshot.spread is None or snapshot.spread > strategy.max_spread:
+            return None
+        if not snapshot.raw_close_time:
+            return None
+
+        hours_to_expiry = (snapshot.raw_close_time - now).total_seconds() / 3600.0
+        if hours_to_expiry < strategy.min_hours_to_expiry or hours_to_expiry > strategy.max_hours_to_expiry:
+            return None
+        if abs(snapshot.edge) < strategy.min_edge:
+            return None
+
+        cooldown_key = f"{strategy.name}:{snapshot.ticker}"
+        last = self.cooldowns.get(cooldown_key)
+        if last and (now - last).total_seconds() < strategy.cooldown_seconds:
+            return None
+
+        if snapshot.edge > 0:
+            side = "yes"
+            requested_price = snapshot.yes_ask
+        else:
+            side = "no"
+            requested_price = snapshot.no_ask
+
+        if requested_price is None or requested_price <= 0 or requested_price >= 1:
+            return None
+
+        max_contracts = max(1, int(strategy.max_ticket_dollars / requested_price))
+        contracts = float(max(1, min(max_contracts, 10)))
+
+        return OrderIntent(
+            intent_id=str(uuid.uuid4()),
+            shadow_group_id=str(uuid.uuid4()),
+            strategy=strategy.name,
+            broker="kalshi",
+            ticker=snapshot.ticker,
+            title=snapshot.title,
+            side=side,
+            action="buy",
+            contracts=contracts,
+            requested_price=round(requested_price, 4),
+            fair_value=float(snapshot.fair_yes),
+            edge=float(snapshot.edge),
+            spot_symbol=snapshot.spot_symbol,
+            spot_price=self.spot_prices.get(snapshot.spot_symbol or "", 0.0),
+            rationale=(
+                f"edge={snapshot.edge:+.3f}, spread={snapshot.spread:.3f}, "
+                f"fair_yes={snapshot.fair_yes:.3f}, mid={snapshot.mid:.3f}. {snapshot.rationale}"
+            ),
+        )
+
+    async def _submit_intent(self, intent: OrderIntent, snapshot: MarketSnapshot) -> None:
+        async with self._lock:
+            strategy = self.strategy_states[intent.strategy]
+            cooldown_key = f"{strategy.name}:{snapshot.ticker}"
+            self.cooldowns[cooldown_key] = datetime.now(timezone.utc)
+
+            shadow_result = await self.paper_broker.execute(intent, snapshot)
+            self._store_trade(intent, "paper" if self.paper_mode else "shadow", shadow_result, not self.paper_mode)
+
+            if self.paper_mode:
+                self.log(f"PAPER {intent.ticker} {intent.side.upper()} x{int(intent.contracts)} @ {intent.requested_price:.4f}")
+                return
+
+            if not self.live_armed:
+                self.log(f"Skipped LIVE {intent.ticker}: live not armed.")
+                return
+
+            if not strategy.live_enabled:
+                self.log(f"Skipped LIVE {intent.ticker}: strategy not live-enabled.")
+                return
+
+            if self.session is None:
+                self.log("Skipped LIVE order: session missing.")
+                return
+
+            try:
+                live_result = await self.live_broker.execute(self.session, intent)
+                self._store_trade(intent, "live", live_result, False)
+                self.log(f"LIVE {intent.ticker} {intent.side.upper()} x{int(intent.contracts)} submitted.")
+            except Exception as exc:
+                self._store_trade(
+                    intent,
+                    "live",
+                    {"status": "error", "fill_price": None, "external_order_id": None, "message": str(exc)},
+                    False,
+                )
+                self.log(f"LIVE order failed for {intent.ticker}: {exc}")
+
+    def _store_trade(self, intent: OrderIntent, mode: str, result: Dict[str, Any], is_shadow: bool) -> None:
+        with SessionLocal() as db:
+            row = Trade(
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
+                shadow_group_id=intent.shadow_group_id,
+                intent_id=f"{intent.intent_id}:{mode}",
+                mode=mode,
+                broker=intent.broker if mode == "live" else "paper",
+                strategy=intent.strategy,
+                ticker=intent.ticker,
+                title=intent.title,
+                side=intent.side,
+                action=intent.action,
+                contracts=intent.contracts,
+                requested_price=intent.requested_price,
+                fill_price=result.get("fill_price"),
+                fair_value=intent.fair_value,
+                edge=intent.edge,
+                spot_symbol=intent.spot_symbol,
+                spot_price=intent.spot_price,
+                status=str(result.get("status", "unknown")),
+                external_order_id=result.get("external_order_id"),
+                message=result.get("message"),
+                is_shadow=is_shadow,
+            )
+            db.add(row)
+            db.commit()
+
+            state = self.strategy_states[intent.strategy]
+            state.perf_trades += 1
+            if result.get("status") == "filled":
+                state.perf_wins += 1
+            state.perf_pnl += 0.0
+
+    def recent_trades(self, limit: int = 50) -> List[Dict[str, Any]]:
+        with SessionLocal() as db:
+            rows = db.query(Trade).order_by(Trade.id.desc()).limit(limit).all()
+        return [
+            {
+                "id": row.id,
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+                "mode": row.mode,
+                "broker": row.broker,
+                "strategy": row.strategy,
+                "ticker": row.ticker,
+                "title": row.title,
+                "side": row.side,
+                "action": row.action,
+                "contracts": row.contracts,
+                "requested_price": row.requested_price,
+                "fill_price": row.fill_price,
+                "fair_value": row.fair_value,
+                "edge": row.edge,
+                "status": row.status,
+                "message": row.message,
+                "spot_symbol": row.spot_symbol,
+                "spot_price": row.spot_price,
+                "is_shadow": row.is_shadow,
+            }
+            for row in rows
+        ]
+
+    def dashboard_status(self) -> Dict[str, Any]:
+        markets = sorted(
+            [m.to_dict() for m in self.market_snapshots.values()],
+            key=lambda x: abs((x.get("edge") or 0.0)),
+            reverse=True,
+        )[:30]
+
+        top_edge = max([abs(m.get("edge") or 0.0) for m in markets], default=0.0)
+
+        return {
+            "mode": "paper" if self.paper_mode else "live",
+            "live_armed": self.live_armed,
+            "top_edge": top_edge,
+            "credentials": {
+                "kalshi_key_loaded": bool(self.kalshi_client.api_key_id),
+                "kalshi_private_key_loaded": bool(self.kalshi_client.private_key),
+                "kalshi_trading_enabled": self.kalshi_client.trading_enabled,
+                "kalshi_base_url": self.kalshi_client.base_url,
+            },
+            "health": self.health,
+            "spots": self.spot_prices,
+            "balances": {
+                "kalshi_balance": self.kalshi_balance,
+                "portfolio_value": self.portfolio_value,
+            },
+            "strategies": {name: state.to_dict() for name, state in self.strategy_states.items()},
+            "markets": markets,
+            "recent_trades": self.recent_trades(40),
+            "logs": list(self.logs),
+        }
+
+    def set_mode(self, mode: str) -> None:
+        if mode == "live" and not self.live_armed:
+            raise HTTPException(status_code=400, detail="Live trading is not armed.")
+        if mode == "live" and not self.kalshi_client.trading_enabled:
+            raise HTTPException(status_code=400, detail="Kalshi credentials are not configured.")
+        self.paper_mode = mode == "paper"
+        self.log(f"Mode switched to {mode.upper()}.")
+
+    def set_live_arm(self, armed: bool) -> None:
+        self.live_armed = armed
+        self.log(f"Live trading {'ARMED' if armed else 'DISARMED'}.")
+
+    def update_strategy(self, name: str, payload: StrategyUpdate) -> None:
+        if name not in self.strategy_states:
+            raise HTTPException(status_code=404, detail=f"Unknown strategy: {name}")
+        state = self.strategy_states[name]
+        state.enabled = payload.enabled
+        if payload.live_enabled is not None:
+            state.live_enabled = payload.live_enabled
+        self.log(f"Strategy {name}: enabled={state.enabled}, live_enabled={state.live_enabled}")
+
+    @staticmethod
+    def _float_or_none(value: Any) -> Optional[float]:
+        if value in (None, ""):
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    @classmethod
+    def _price_to_float(cls, dollars_value: Any, cents_value: Any) -> Optional[float]:
+        if dollars_value not in (None, ""):
+            try:
+                return float(dollars_value)
+            except (TypeError, ValueError):
+                pass
+        if cents_value not in (None, ""):
+            try:
+                return float(cents_value) / 100.0
+            except (TypeError, ValueError):
+                pass
+        return None
+
+    @staticmethod
+    def _parse_dt(value: Any) -> Optional[datetime]:
+        if not value:
+            return None
+        try:
+            return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _detect_symbol(text: str) -> Optional[str]:
+        upper = text.upper()
+        if "BITCOIN" in upper or re.search(r"\bBTC\b", upper):
+            return "BTC"
+        if "ETHEREUM" in upper or re.search(r"\bETH\b", upper):
+            return "ETH"
+        if "SOLANA" in upper or re.search(r"\bSOL\b", upper):
+            return "SOL"
+        return None
+
+    @classmethod
+    def _parse_threshold(cls, text: str) -> tuple[Optional[float], Optional[str]]:
+        upper = f" {text.upper()} "
+        direction = None
+        if any(token in upper for token in [" ABOVE ", " OVER ", " GREATER THAN ", " AT LEAST "]):
+            direction = "above"
+        elif any(token in upper for token in [" BELOW ", " UNDER ", " LESS THAN ", " AT MOST "]):
+            direction = "below"
+        if direction is None:
+            return None, None
+
+        numbers = cls.NUMBER_RE.findall(upper)
+        parsed: List[float] = []
+        for raw in numbers:
+            try:
+                parsed.append(float(raw.replace(",", "")))
+            except ValueError:
+                pass
+        parsed = [x for x in parsed if x >= 10]
+        if not parsed:
+            return None, direction
+        return max(parsed), direction
+
+
+bot = TradingBot()
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    await bot.start()
+    try:
+        yield
+    finally:
+        await bot.stop()
+
+
+app = FastAPI(title="Kalshi Operator", lifespan=lifespan)
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
+
 
 @app.get("/", response_class=HTMLResponse)
-async def dashboard(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request, "bot": bot})
+async def home(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
-@app.post("/toggle")
-async def toggle(strat: str = Form(...), live: bool = Form(...)):
-    bot.strats[strat]['live'] = live
-    return {"status": "ok"}
-
-@app.post("/set_mode")
-async def set_mode(mode: str = Form(...)):
-    bot.mode = mode.lower()
-    return {"status": "ok"}
-
-@app.post("/toggle_paper")
-async def toggle_paper(paper: bool = Form(...)):
-    bot.paper_mode = paper
-    return {"status": "ok"}
 
 @app.get("/api/status")
-async def status():
-    return {
-        "strats": bot.strats,
-        "balance_kalshi": bot.balance_kalshi,
-        "balance_poly": bot.balance_poly,
-        "mode": bot.mode,
-        "paper_mode": bot.paper_mode
-    }
-EOF
+async def api_status():
+    return JSONResponse(bot.dashboard_status())
+
+
+@app.post("/api/mode")
+async def api_mode(payload: ModeUpdate):
+    bot.set_mode(payload.mode)
+    return {"ok": True, "mode": payload.mode}
+
+
+@app.post("/api/arm-live")
+async def api_arm_live(payload: ArmLiveUpdate):
+    bot.set_live_arm(payload.armed)
+    return {"ok": True, "live_armed": payload.armed}
+
+
+@app.post("/api/strategy/{name}")
+async def api_strategy(name: str, payload: StrategyUpdate):
+    bot.update_strategy(name, payload)
+    return {"ok": True, "strategy": name}
+
+
+@app.get("/api/trades")
+async def api_trades(limit: int = 50):
+    return {"trades": bot.recent_trades(limit=max(1, min(limit, 200)))}

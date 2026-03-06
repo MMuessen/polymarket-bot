@@ -1,159 +1,299 @@
-cat > app/templates/index.html << 'EOF'
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sentinel V10.2 - Paper Trading Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="/static/style.css">
-    <script>
-        let botData = {};
-        async function updateDashboard() {
-            const res = await fetch('/api/status');
-            botData = await res.json();
-
-            // Paper Mode Indicator
-            const modeEl = document.getElementById('paper-mode');
-            modeEl.textContent = botData.paper_mode ? 'PAPER MODE (SAFE - SIMULATED TRADES)' : 'LIVE MODE (REAL MONEY)';
-            modeEl.className = botData.paper_mode 
-                ? 'text-green-400 font-bold text-xl' 
-                : 'text-red-500 font-bold text-xl';
-
-            // Balances
-            document.getElementById('kalshi-balance').textContent = botData.balance_kalshi.toFixed(2);
-            document.getElementById('poly-balance').textContent = botData.balance_poly.toFixed(2);
-
-            // Strategies Table
-            const tbody = document.getElementById('strat-table');
-            tbody.innerHTML = '';
-            Object.entries(botData.strats).forEach(([name, data]) => {
-                const winRate = data.perf.trades > 0 
-                    ? ((data.perf.wins / data.perf.trades) * 100).toFixed(1) 
-                    : '0.0';
-                const row = document.createElement('tr');
-                row.className = 'hover:bg-gray-800';
-                row.innerHTML = `
-                    <td class="px-6 py-4">${name}</td>
-                    <td class="px-6 py-4">${winRate}% (${data.perf.wins}/${data.perf.trades})</td>
-                    <td class="px-6 py-4">$${data.perf.pnl.toFixed(2)}</td>
-                    <td class="px-6 py-4 text-green-400">$${((botData.balance_kalshi || 100) * 0.01).toFixed(2)}</td>
-                `;
-                tbody.appendChild(row);
-            });
-        }
-
-        setInterval(updateDashboard, 2000);
-        window.onload = updateDashboard;
-    </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kalshi Operator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html, body { background: #06070b; }
+    .glass { background: linear-gradient(180deg, rgba(17,24,39,.92), rgba(9,12,18,.94)); border: 1px solid rgba(255,255,255,.08); }
+    .mono { font-variant-ligatures: none; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .good { color: #34d399; }
+    .bad { color: #f87171; }
+    .warn { color: #fbbf24; }
+    .muted { color: #94a3b8; }
+  </style>
 </head>
-<body class="bg-zinc-950 text-white font-sans">
-    <div class="max-w-6xl mx-auto p-8">
-        <div class="flex items-center justify-between mb-8">
-            <h1 class="text-4xl font-bold flex items-center gap-3">
-                🚀 Sentinel V10.2
-                <span class="text-emerald-400 text-sm font-mono">Paper Trading Active</span>
-            </h1>
-            <div id="paper-mode" class="text-green-400 font-bold text-xl"></div>
+<body class="text-slate-100 min-h-screen">
+  <div class="max-w-[1700px] mx-auto px-4 py-4">
+    <div class="glass rounded-2xl px-5 py-4 mb-4">
+      <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div>
+          <div class="text-xs uppercase tracking-[0.3em] text-slate-400">Operator Console</div>
+          <div class="text-3xl font-bold mt-1">Kalshi Quant Desk</div>
+          <div class="text-sm text-slate-400 mt-1">Same signal engine. Same order intent. Paper and live split only at execution.</div>
         </div>
-
-        <!-- Controls -->
-        <div class="bg-zinc-900 rounded-2xl p-8 mb-8">
-            <h2 class="text-2xl mb-6 font-semibold">Controls</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <!-- Mode Switch -->
-                <div>
-                    <label class="block text-sm mb-2">Trading Mode</label>
-                    <form action="/set_mode" method="post" class="flex gap-3">
-                        <select name="mode" class="bg-zinc-800 text-white px-4 py-3 rounded-xl flex-1">
-                            <option value="kalshi">Kalshi Only</option>
-                            <option value="both">Both (Kalshi + Poly)</option>
-                        </select>
-                        <button type="submit" class="bg-emerald-500 hover:bg-emerald-600 px-8 py-3 rounded-xl font-medium">Set Mode</button>
-                    </form>
-                </div>
-
-                <!-- Paper Toggle -->
-                <div>
-                    <label class="block text-sm mb-2">Paper Mode</label>
-                    <form action="/toggle_paper" method="post" class="flex gap-3">
-                        <input type="hidden" name="paper" value="true">
-                        <button type="submit" class="bg-zinc-800 hover:bg-zinc-700 px-8 py-3 rounded-xl font-medium flex-1">Enable Paper</button>
-                    </form>
-                </div>
-
-                <!-- Strategy Toggles -->
-                <div>
-                    <label class="block text-sm mb-2">Strategies</label>
-                    <div class="flex gap-3">
-                        <form action="/toggle" method="post" class="flex-1">
-                            <input type="hidden" name="strat" value="sentiment">
-                            <input type="hidden" name="live" value="true">
-                            <button type="submit" class="bg-zinc-800 hover:bg-zinc-700 px-6 py-3 rounded-xl w-full">Sentiment LIVE</button>
-                        </form>
-                        <form action="/toggle" method="post" class="flex-1">
-                            <input type="hidden" name="strat" value="crypto_lag">
-                            <input type="hidden" name="live" value="true">
-                            <button type="submit" class="bg-zinc-800 hover:bg-zinc-700 px-6 py-3 rounded-xl w-full">Crypto Lag LIVE</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div class="glass rounded-xl px-4 py-3">
+            <div class="text-xs text-slate-400 uppercase">Mode</div>
+            <div id="modeBadge" class="text-xl font-semibold">-</div>
+          </div>
+          <div class="glass rounded-xl px-4 py-3">
+            <div class="text-xs text-slate-400 uppercase">Arm</div>
+            <div id="armBadge" class="text-xl font-semibold">-</div>
+          </div>
+          <div class="glass rounded-xl px-4 py-3">
+            <div class="text-xs text-slate-400 uppercase">Cash</div>
+            <div id="cashCard" class="text-xl font-semibold mono">$0.00</div>
+          </div>
+          <div class="glass rounded-xl px-4 py-3">
+            <div class="text-xs text-slate-400 uppercase">Portfolio</div>
+            <div id="portfolioCard" class="text-xl font-semibold mono">$0.00</div>
+          </div>
+          <div class="glass rounded-xl px-4 py-3">
+            <div class="text-xs text-slate-400 uppercase">Top Edge</div>
+            <div id="edgeCard" class="text-xl font-semibold mono">0.0%</div>
+          </div>
         </div>
-
-        <!-- Finances -->
-        <div class="bg-zinc-900 rounded-2xl p-8 mb-8">
-            <h2 class="text-2xl mb-6 font-semibold">Finances</h2>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-                <div class="bg-zinc-800 rounded-xl p-6">
-                    <div class="text-zinc-400 text-sm">Kalshi Balance</div>
-                    <div id="kalshi-balance" class="text-4xl font-mono text-emerald-400">$100.00</div>
-                </div>
-                <div class="bg-zinc-800 rounded-xl p-6">
-                    <div class="text-zinc-400 text-sm">Polymarket Balance</div>
-                    <div id="poly-balance" class="text-4xl font-mono text-zinc-400">$0.00 (Not Connected)</div>
-                </div>
-                <div class="bg-zinc-800 rounded-xl p-6">
-                    <div class="text-zinc-400 text-sm">Lifetime Deposits</div>
-                    <div class="text-4xl font-mono">$0.00</div>
-                </div>
-                <div class="bg-zinc-800 rounded-xl p-6">
-                    <div class="text-zinc-400 text-sm">Lifetime Withdraws</div>
-                    <div class="text-4xl font-mono">$0.00</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Strategies -->
-        <div class="bg-zinc-900 rounded-2xl p-8 mb-8">
-            <h2 class="text-2xl mb-6 font-semibold">Strategies (Live Performance)</h2>
-            <table class="w-full text-left">
-                <thead>
-                    <tr class="border-b border-zinc-700">
-                        <th class="py-4 px-6">Strategy</th>
-                        <th class="py-4 px-6">Win Rate</th>
-                        <th class="py-4 px-6">Total PNL</th>
-                        <th class="py-4 px-6">Recommended Bet</th>
-                    </tr>
-                </thead>
-                <tbody id="strat-table" class="text-zinc-300"></tbody>
-            </table>
-        </div>
-
-        <!-- Status -->
-        <div class="bg-zinc-900 rounded-2xl p-8">
-            <h2 class="text-2xl mb-4 font-semibold">Live Status</h2>
-            <pre id="raw-status" class="bg-black p-6 rounded-xl text-xs overflow-auto h-64 font-mono text-emerald-300"></pre>
-        </div>
+      </div>
     </div>
 
-    <script>
-        setInterval(async () => {
-            const res = await fetch('/api/status');
-            const data = await res.json();
-            document.getElementById('raw-status').textContent = JSON.stringify(data, null, 2);
-        }, 2000);
-    </script>
+    <div class="grid grid-cols-1 2xl:grid-cols-12 gap-4">
+      <div class="2xl:col-span-3 space-y-4">
+        <div class="glass rounded-2xl p-4">
+          <div class="text-lg font-semibold mb-3">Execution Controls</div>
+          <div class="space-y-3">
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="setMode('paper')" class="rounded-xl px-4 py-3 bg-cyan-700 hover:bg-cyan-600 font-semibold">Paper</button>
+              <button onclick="setMode('live')" class="rounded-xl px-4 py-3 bg-rose-700 hover:bg-rose-600 font-semibold">Live</button>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="setArm(true)" class="rounded-xl px-4 py-3 bg-amber-600 hover:bg-amber-500 font-semibold">Arm Live</button>
+              <button onclick="setArm(false)" class="rounded-xl px-4 py-3 bg-slate-800 hover:bg-slate-700 font-semibold">Disarm</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass rounded-2xl p-4">
+          <div class="text-lg font-semibold mb-3">Risk + Connection</div>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between gap-3"><span class="muted">Kalshi base</span><span id="kalshiBase" class="mono text-right break-all"></span></div>
+            <div class="flex justify-between gap-3"><span class="muted">Key loaded</span><span id="keyLoaded"></span></div>
+            <div class="flex justify-between gap-3"><span class="muted">Private key</span><span id="privLoaded"></span></div>
+            <div class="flex justify-between gap-3"><span class="muted">Trading ready</span><span id="tradeReady"></span></div>
+          </div>
+        </div>
+
+        <div class="glass rounded-2xl p-4">
+          <div class="text-lg font-semibold mb-3">Spot Tape</div>
+          <div class="grid grid-cols-1 gap-2">
+            <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3 flex justify-between"><span class="muted">BTC</span><span id="spotBTC" class="mono">$0</span></div>
+            <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3 flex justify-between"><span class="muted">ETH</span><span id="spotETH" class="mono">$0</span></div>
+            <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3 flex justify-between"><span class="muted">SOL</span><span id="spotSOL" class="mono">$0</span></div>
+          </div>
+        </div>
+
+        <div class="glass rounded-2xl p-4">
+          <div class="text-lg font-semibold mb-3">Strategies</div>
+          <div id="strategyControls" class="space-y-3"></div>
+        </div>
+      </div>
+
+      <div class="2xl:col-span-6 space-y-4">
+        <div class="glass rounded-2xl p-4">
+          <div class="flex items-center justify-between mb-3">
+            <div class="text-lg font-semibold">Scanner</div>
+            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Best Edges First</div>
+          </div>
+          <div class="overflow-auto">
+            <table class="w-full text-sm">
+              <thead class="border-b border-white/10 text-slate-400">
+                <tr>
+                  <th class="text-left py-3 pr-3">Ticker</th>
+                  <th class="text-left py-3 pr-3">Market</th>
+                  <th class="text-right py-3 pr-3">Bid</th>
+                  <th class="text-right py-3 pr-3">Ask</th>
+                  <th class="text-right py-3 pr-3">Mid</th>
+                  <th class="text-right py-3 pr-3">Fair</th>
+                  <th class="text-right py-3 pr-3">Edge</th>
+                  <th class="text-left py-3">Reason</th>
+                </tr>
+              </thead>
+              <tbody id="marketsTable" class="divide-y divide-white/5"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="glass rounded-2xl p-4">
+          <div class="flex items-center justify-between mb-3">
+            <div class="text-lg font-semibold">Orders + Fills</div>
+            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Paper / Shadow / Live</div>
+          </div>
+          <div class="overflow-auto">
+            <table class="w-full text-sm">
+              <thead class="border-b border-white/10 text-slate-400">
+                <tr>
+                  <th class="text-left py-3 pr-3">Time</th>
+                  <th class="text-left py-3 pr-3">Mode</th>
+                  <th class="text-left py-3 pr-3">Strategy</th>
+                  <th class="text-left py-3 pr-3">Ticker</th>
+                  <th class="text-left py-3 pr-3">Side</th>
+                  <th class="text-right py-3 pr-3">Qty</th>
+                  <th class="text-right py-3 pr-3">Req</th>
+                  <th class="text-right py-3 pr-3">Fill</th>
+                  <th class="text-right py-3 pr-3">Edge</th>
+                  <th class="text-left py-3">Status</th>
+                </tr>
+              </thead>
+              <tbody id="tradesTable" class="divide-y divide-white/5"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="2xl:col-span-3 space-y-4">
+        <div class="glass rounded-2xl p-4">
+          <div class="text-lg font-semibold mb-3">System Health</div>
+          <pre id="healthBox" class="bg-slate-950/70 border border-white/5 rounded-xl p-4 overflow-auto text-xs text-cyan-300 mono h-72"></pre>
+        </div>
+
+        <div class="glass rounded-2xl p-4">
+          <div class="text-lg font-semibold mb-3">Activity Feed</div>
+          <div id="logsBox" class="bg-slate-950/70 border border-white/5 rounded-xl p-4 overflow-auto text-xs text-emerald-300 mono h-72 space-y-2"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function money(n) {
+      if (n === null || n === undefined || Number.isNaN(Number(n))) return "-";
+      return "$" + Number(n).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+    function px(n) {
+      if (n === null || n === undefined || Number.isNaN(Number(n))) return "-";
+      return Number(n).toFixed(4);
+    }
+    function pct(n) {
+      if (n === null || n === undefined || Number.isNaN(Number(n))) return "-";
+      return (Number(n) * 100).toFixed(1) + "%";
+    }
+    function yesNo(v) {
+      return v ? "YES" : "NO";
+    }
+
+    async function postJson(url, payload) {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || "request failed");
+      await load();
+    }
+
+    async function setMode(mode) {
+      try { await postJson("/api/mode", { mode }); } catch (e) { alert(e.message); }
+    }
+
+    async function setArm(armed) {
+      try { await postJson("/api/arm-live", { armed }); } catch (e) { alert(e.message); }
+    }
+
+    async function setStrategy(name, enabled, liveEnabled) {
+      try { await postJson(`/api/strategy/${name}`, { enabled, live_enabled: liveEnabled }); } catch (e) { alert(e.message); }
+    }
+
+    function renderStrategy(name, s) {
+      const scanColor = s.enabled ? "text-emerald-400" : "text-slate-500";
+      const liveColor = s.live_enabled ? "text-rose-400" : "text-slate-500";
+      return `
+        <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="font-semibold">${name}</div>
+              <div class="text-xs text-slate-400">edge ≥ ${pct(s.min_edge)} | spread ≤ ${pct(s.max_spread)}</div>
+              <div class="text-xs text-slate-400 mt-1">cooldown ${s.cooldown_seconds}s | ticket $${s.max_ticket_dollars}</div>
+            </div>
+            <div class="text-right text-xs">
+              <div class="${scanColor}">SCAN ${s.enabled ? "ON" : "OFF"}</div>
+              <div class="${liveColor}">LIVE ${s.live_enabled ? "ON" : "OFF"}</div>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2 mt-3">
+            <button onclick="setStrategy('${name}', ${!s.enabled}, ${s.live_enabled})" class="rounded-lg px-3 py-2 ${s.enabled ? 'bg-slate-800 hover:bg-slate-700' : 'bg-emerald-700 hover:bg-emerald-600'}">${s.enabled ? 'Disable Scan' : 'Enable Scan'}</button>
+            <button onclick="setStrategy('${name}', ${s.enabled}, ${!s.live_enabled})" class="rounded-lg px-3 py-2 ${s.live_enabled ? 'bg-slate-800 hover:bg-slate-700' : 'bg-rose-800 hover:bg-rose-700'}">${s.live_enabled ? 'Disable Live' : 'Enable Live'}</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderMarkets(markets) {
+      const body = document.getElementById("marketsTable");
+      body.innerHTML = markets.map(m => `
+        <tr class="align-top">
+          <td class="py-3 pr-3 mono">${m.ticker}</td>
+          <td class="py-3 pr-3">
+            <div class="font-medium">${m.title}</div>
+            <div class="text-xs text-slate-400 mt-1">${m.category || ''}</div>
+          </td>
+          <td class="py-3 pr-3 text-right mono">${px(m.yes_bid)}</td>
+          <td class="py-3 pr-3 text-right mono">${px(m.yes_ask)}</td>
+          <td class="py-3 pr-3 text-right mono">${px(m.mid)}</td>
+          <td class="py-3 pr-3 text-right mono">${px(m.fair_yes)}</td>
+          <td class="py-3 pr-3 text-right mono ${Number(m.edge || 0) >= 0 ? 'good' : 'bad'}">${pct(m.edge)}</td>
+          <td class="py-3 text-xs text-slate-400">${m.rationale || ''}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderTrades(trades) {
+      const body = document.getElementById("tradesTable");
+      body.innerHTML = trades.map(t => {
+        const modeClass = t.mode === "live" ? "text-rose-300" : (t.is_shadow ? "text-cyan-300" : "text-emerald-300");
+        const statusClass = String(t.status).includes("fill") ? "good" : (String(t.status).includes("error") ? "bad" : "text-slate-300");
+        return `
+          <tr class="align-top">
+            <td class="py-3 pr-3 text-xs text-slate-400">${t.created_at ? new Date(t.created_at).toLocaleString() : '-'}</td>
+            <td class="py-3 pr-3 ${modeClass}">${t.mode}</td>
+            <td class="py-3 pr-3">${t.strategy}</td>
+            <td class="py-3 pr-3 mono">${t.ticker}</td>
+            <td class="py-3 pr-3 uppercase">${t.side}</td>
+            <td class="py-3 pr-3 text-right mono">${Number(t.contracts || 0).toFixed(0)}</td>
+            <td class="py-3 pr-3 text-right mono">${px(t.requested_price)}</td>
+            <td class="py-3 pr-3 text-right mono">${px(t.fill_price)}</td>
+            <td class="py-3 pr-3 text-right mono ${Number(t.edge || 0) >= 0 ? 'good' : 'bad'}">${pct(t.edge)}</td>
+            <td class="py-3 text-xs ${statusClass}">${t.status}${t.message ? ' · ' + t.message : ''}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    async function load() {
+      const res = await fetch("/api/status");
+      const data = await res.json();
+
+      document.getElementById("modeBadge").textContent = data.mode.toUpperCase();
+      document.getElementById("modeBadge").className = data.mode === "live" ? "text-xl font-semibold bad" : "text-xl font-semibold text-cyan-300";
+      document.getElementById("armBadge").textContent = data.live_armed ? "ARMED" : "DISARMED";
+      document.getElementById("armBadge").className = data.live_armed ? "text-xl font-semibold warn" : "text-xl font-semibold text-slate-500";
+
+      document.getElementById("cashCard").textContent = money(data.balances.kalshi_balance);
+      document.getElementById("portfolioCard").textContent = money(data.balances.portfolio_value);
+      document.getElementById("edgeCard").textContent = pct(data.top_edge);
+
+      document.getElementById("spotBTC").textContent = money(data.spots.BTC);
+      document.getElementById("spotETH").textContent = money(data.spots.ETH);
+      document.getElementById("spotSOL").textContent = money(data.spots.SOL);
+
+      document.getElementById("kalshiBase").textContent = data.credentials.kalshi_base_url;
+      document.getElementById("keyLoaded").textContent = yesNo(data.credentials.kalshi_key_loaded);
+      document.getElementById("privLoaded").textContent = yesNo(data.credentials.kalshi_private_key_loaded);
+      document.getElementById("tradeReady").textContent = yesNo(data.credentials.kalshi_trading_enabled);
+
+      document.getElementById("strategyControls").innerHTML =
+        Object.entries(data.strategies).map(([name, s]) => renderStrategy(name, s)).join("");
+
+      renderMarkets(data.markets || []);
+      renderTrades(data.recent_trades || []);
+      document.getElementById("healthBox").textContent = JSON.stringify(data.health, null, 2);
+      document.getElementById("logsBox").innerHTML = (data.logs || []).map(x => `<div>${x}</div>`).join("");
+    }
+
+    load();
+    setInterval(load, 5000);
+  </script>
 </body>
 </html>
-EOF

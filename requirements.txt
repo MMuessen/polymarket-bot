@@ -1,14 +1,8 @@
-fastapi
-uvicorn[standard]
-websockets
-aiohttp
-py-clob-client
-python-dotenv
-pandas
-sqlalchemy
-redis
-jinja2
-python-multipart
-feedparser
-kalshi_python_async
-cryptography  # Add this for RSA Key authentication
+fastapi==0.116.1
+uvicorn[standard]==0.35.0
+jinja2==3.1.6
+python-dotenv==1.1.1
+aiohttp==3.12.15
+sqlalchemy==2.0.43
+pydantic==2.11.7
+cryptography==45.0.6
