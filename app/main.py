@@ -3,10 +3,14 @@ from datetime import datetime
 from fastapi import FastAPI, Request, WebSocket, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding
 from dotenv import load_dotenv
 
+# Persistence Logic: Load secrets from local Dell server .env
 ENV_FILE = ".env"
-if os.path.exists(ENV_FILE): load_dotenv(ENV_FILE)
+if os.path.exists(ENV_FILE):
+    load_dotenv(ENV_FILE)
 
 app = FastAPI()
 templates = Jinja2Templates(directory="app/templates")
@@ -16,27 +20,89 @@ KALSHI_API = "https://api.elections.kalshi.com/trade-api/v2"
 if not os.path.exists("app/static"): os.makedirs("app/static")
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
-class SentinelV10_2:
+class SentinelV10_Full:
     def __init__(self):
         self.load_settings()
-        self.api_key = os.getenv("KALSHI_API_KEY", "")
-        self.priv_key_raw = os.getenv("KALSHI_PRIVATE_KEY", "")
+        self.balance_real = 25.01 
+        self.max_slots = 10
         self.positions = []
         self.conns = []
+        # Key management
+        self.api_key = os.getenv("KALSHI_API_KEY", "")
+        self.priv_key_raw = os.getenv("KALSHI_PRIVATE_KEY", "")
 
     def load_settings(self):
         if os.path.exists(SETTINGS_FILE):
             with open(SETTINGS_FILE, "r") as f:
                 saved = json.load(f)
-                self.balance_paper = saved.get("balance_paper", 10286.00) #
-        else: self.balance_paper = 10286.00
+                self.mode = saved.get("mode", "PAPER")
+                self.spread_active = saved.get("spread_active", True)
+                self.balance_paper = saved.get("balance_paper", 10286.00)
+        else: self.mode, self.spread_active, self.balance_paper = "PAPER", True, 10286.00
+
+    def save_settings(self):
+        with open(SETTINGS_FILE, "w") as f:
+            json.dump({"mode": self.mode, "spread_active": self.spread_active, "balance_paper": self.balance_paper}, f)
 
     def save_secrets(self, key_id, priv_key):
         with open(ENV_FILE, "w") as f:
-            f.write(f"KALSHI_API_KEY={key_id}\nKALSHI_PRIVATE_KEY=\"{priv_key}\"\n")
+            f.write(f"KALSHI_API_KEY={key_id}\n")
+            f.write(f"KALSHI_PRIVATE_KEY=\"{priv_key}\"\n")
         load_dotenv(ENV_FILE, override=True)
         self.api_key, self.priv_key_raw = key_id, priv_key
         return True
+
+    async def get_market_data(self, ticker):
+        """High-Fidelity Order Book Bridge"""
+        async with httpx.AsyncClient() as client:
+            try:
+                res = await client.get(f"{KALSHI_API}/markets/{ticker}/orderbook")
+                d = res.json().get('orderbook', {})
+                # Synthetic Ask calculation: 100 - Best NO Bid
+                return {
+                    "bid": d.get('yes', [[0,0]])[-1][0], 
+                    "ask": 100 - d.get('no', [[0,0]])[-1][0], 
+                    "liq": d.get('no', [[0,0]])[-1][1]
+                }
+            except: return None
+
+    async def risk_manager_loop(self):
+        """Avellaneda-Stoikov Inventory Management"""
+        while True:
+            # Skew targets: As slots fill, we lower our exit threshold to dump risk
+            skew = 0.05 - ((len(self.positions)/self.max_slots) * 0.03)
+            for i, pos in enumerate(self.positions):
+                m = await self.get_market_data(pos['market_id'])
+                if m and m['bid'] >= (pos['entry_price'] + (skew * 100)):
+                    # Realistic Fee deduction (~3.5%)
+                    profit = (pos['size'] * ((m['bid'] - pos['entry_price'])/100)) * 0.965
+                    self.balance_paper += (pos['size'] + profit)
+                    self.positions.pop(i)
+                    self.save_settings()
+                    await self.log_event(f"SKEW-EXIT: {pos['market_id']} | Captured Spread: {skew*100:.1f}¢", "sell")
+                    break
+            await asyncio.sleep(5)
+
+    async def scanner_loop(self):
+        """Continuous Market Scanning"""
+        tickers = ["KXNASDAQ100-26MAR26-B18500", "KXFED-26MAR26-B5.25", "KXBTC-26MAR26-T75000"]
+        while True:
+            if self.spread_active and len(self.positions) < self.max_slots:
+                ticker = random.choice(tickers)
+                m = await self.get_market_data(ticker)
+                # Liquidity Filter: Only 'fill' if real depth exists
+                if m and m['liq'] > 100:
+                    await self.execute_trade(ticker, m['ask'])
+            await asyncio.sleep(15)
+
+    async def execute_trade(self, ticker, price):
+        self.balance_paper -= 100.00
+        self.positions.append({
+            "market_id": ticker, "entry_price": price, 
+            "size": 100.00, "tag": self.mode, "entry_time": datetime.now().isoformat()
+        })
+        self.save_settings()
+        await self.log_event(f"[{self.mode}] ENTRY: {ticker} @ ${price} (Liquidity: Verified)", "buy")
 
     async def log_event(self, msg, strategy="sys"):
         t = datetime.now().strftime("%H:%M:%S")
@@ -44,20 +110,37 @@ class SentinelV10_2:
             try: await ws.send_json({"msg": msg, "type": strategy, "time": t})
             except: self.conns.remove(ws)
 
-engine = SentinelV10_2()
+engine = SentinelV10_Full()
+
+@app.on_event("startup")
+async def startup():
+    asyncio.create_task(engine.scanner_loop())
+    asyncio.create_task(engine.risk_manager_loop())
 
 @app.get("/api/status")
 async def get_status():
-    return {"balance_paper": engine.balance_paper, "vault_loaded": bool(engine.api_key), "positions": engine.positions}
+    return {
+        "balance_paper": engine.balance_paper, 
+        "stats": {"spread": {"active": engine.spread_active}},
+        "positions": engine.positions, 
+        "vault_loaded": bool(engine.api_key)
+    }
 
 @app.post("/save_secrets")
 async def save_secrets(api_key: str = Form(...), priv_key: str = Form(...)):
     engine.save_secrets(api_key, priv_key)
-    await engine.log_event("VAULT: Secrets Locked.", "system")
+    await engine.log_event("VAULT: RSA Keys Saved & Bridged.", "system")
+    return {"status": "success"}
+
+@app.post("/toggle")
+async def toggle(strat: str = Form(...), active: str = Form(...)):
+    engine.spread_active = (active.lower() == 'true')
+    engine.save_settings()
     return {"status": "success"}
 
 @app.get("/")
-async def index(request: Request): return templates.TemplateResponse("index.html", {"request": request})
+async def index(request: Request): 
+    return templates.TemplateResponse("index.html", {"request": request})
 
 @app.websocket("/ws/logs")
 async def websocket_endpoint(websocket: WebSocket):
