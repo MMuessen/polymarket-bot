@@ -13,7 +13,6 @@ jobs:
       - name: Rapid Hot-Reload
         run: |
           cd /home/agent/polymarket-bot
-          # Fixed command: no space between docker and compose
+          # Corrected command: no space in docker compose, plus the 'up' verb
           sudo docker compose up -d --build --force-recreate
-          # Cleanup old test images to save space
           sudo docker image prune -f
