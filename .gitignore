@@ -16,3 +16,7 @@ bot_settings.json
 # Temp / backups
 actions-runner/
 backup_before_fix/
+app/main.py.*.bak
+*.bak
+tmp/
+docs/ai-state/*.tmp
