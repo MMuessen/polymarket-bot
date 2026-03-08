@@ -40,3 +40,7 @@ app/main.py.bak_*
 data/*.db
 data/*.sqlite
 data/*.sqlite3
+improver/logs/
+*.pid
+app/strategy_lab/*.bak
+app/strategy_lab/*.bak.*
