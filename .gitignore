@@ -20,3 +20,19 @@ app/main.py.*.bak
 *.bak
 tmp/
 docs/ai-state/*.tmp
+# local patch / backup junk
+app/debug_handoff.py*.bak
+app/static/app.js*.bak
+# local backup directories
+backup_*/
+backups/
+# accidental terminal artifact files
+0
+=
+CACHED
+[[]bot
+[[]bot]
+exporting
+naming
+transferring
+writing
