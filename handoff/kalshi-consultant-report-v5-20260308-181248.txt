@@ -1,0 +1,1 @@
+mode: paper\nlive_armed: False\nloop_error: None\n\nreplay_scoring:\n  lookup_mode: none\n  rows_used: 0\n  architect_next_step: keep_collecting_resolved_rows_before_threshold_or_sizing_changes\n\nmaker_lookup_top:\n\ntaker_lookup_top:\n\nregime_lookup_top:\n\ntail_overlay_replay_top:

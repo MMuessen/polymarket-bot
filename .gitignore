@@ -36,3 +36,7 @@ exporting
 naming
 transferring
 writing
+app/main.py.bak_*
+data/*.db
+data/*.sqlite
+data/*.sqlite3

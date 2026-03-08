@@ -3,448 +3,513 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kalshi Operator</title>
+  <title>Kalshi Quant Desk</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    html, body { background: #06070b; }
-    .glass { background: linear-gradient(180deg, rgba(17,24,39,.92), rgba(9,12,18,.94)); border: 1px solid rgba(255,255,255,.08); }
-    .mono { font-variant-ligatures: none; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-    .good { color: #34d399; }
-    .bad { color: #f87171; }
-    .warn { color: #fbbf24; }
-    .muted { color: #94a3b8; }
+    :root{
+      --bg:#06070b;
+      --panel:#0f172aee;
+      --panel-2:#0b1220ee;
+      --stroke:rgba(255,255,255,.08);
+      --muted:#94a3b8;
+      --good:#34d399;
+      --bad:#f87171;
+      --warn:#fbbf24;
+      --accent:#60a5fa;
+    }
+    html, body {
+      background:
+        radial-gradient(circle at top left, rgba(59,130,246,.14), transparent 28%),
+        radial-gradient(circle at top right, rgba(16,185,129,.10), transparent 24%),
+        linear-gradient(180deg, #04050a 0%, #06070b 100%);
+      min-height: 100%;
+    }
+    body {
+      color: #e5edf7;
+    }
+    .glass {
+      background: linear-gradient(180deg, rgba(17,24,39,.92), rgba(9,12,18,.94));
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.03),
+        0 18px 40px rgba(0,0,0,.35);
+      backdrop-filter: blur(16px);
+    }
+    .glass-soft {
+      background: linear-gradient(180deg, rgba(10,15,25,.84), rgba(7,10,16,.88));
+      border: 1px solid rgba(255,255,255,.06);
+      box-shadow: 0 12px 24px rgba(0,0,0,.22);
+    }
+    .mono {
+      font-variant-ligatures: none;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    .muted { color: var(--muted); }
+    .good { color: var(--good); }
+    .bad { color: var(--bad); }
+    .warn { color: var(--warn); }
+
+    .pill {
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.04);
+      border-radius: 999px;
+      padding: .28rem .65rem;
+      font-size: .72rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .kpi-card {
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi-card::after {
+      content: "";
+      position: absolute;
+      inset: auto -20% -60% auto;
+      width: 180px;
+      height: 180px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(96,165,250,.18), transparent 60%);
+      pointer-events: none;
+    }
+
+    .section-title {
+      font-size: 0.95rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: #8fa5c7;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border-radius: 1rem;
+      border: 1px solid rgba(255,255,255,.06);
+      background: rgba(2,6,23,.45);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .10em;
+      color: #8da2bf;
+      background: rgba(255,255,255,.02);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    td, th {
+      padding: .85rem .8rem;
+      border-bottom: 1px solid rgba(255,255,255,.05);
+      white-space: nowrap;
+    }
+
+    tr:hover td {
+      background: rgba(255,255,255,.025);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      border-radius: 999px;
+      padding: .28rem .62rem;
+      font-size: .72rem;
+      font-weight: 700;
+      border: 1px solid rgba(255,255,255,.08);
+    }
+
+    .badge-green { background: rgba(16,185,129,.12); color: #86efac; }
+    .badge-red { background: rgba(239,68,68,.12); color: #fca5a5; }
+    .badge-yellow { background: rgba(245,158,11,.12); color: #fcd34d; }
+    .badge-blue { background: rgba(59,130,246,.12); color: #93c5fd; }
+    .badge-gray { background: rgba(148,163,184,.12); color: #cbd5e1; }
+
+    .btn {
+      border-radius: 1rem;
+      padding: .82rem 1rem;
+      font-weight: 700;
+      transition: all .18s ease;
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .btn:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.06);
+    }
+
+    .input {
+      width: 100%;
+      border-radius: .9rem;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(2,6,23,.7);
+      color: #e5edf7;
+      padding: .72rem .85rem;
+      font-size: .92rem;
+      outline: none;
+    }
+    .input:focus {
+      border-color: rgba(96,165,250,.55);
+      box-shadow: 0 0 0 3px rgba(96,165,250,.14);
+    }
+
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .sticky-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      backdrop-filter: blur(14px);
+      background: linear-gradient(180deg, rgba(4,7,12,.84), rgba(4,7,12,.56));
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+
+    .subtle-grid {
+      background-image:
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
   </style>
-
-<style>
-.tooltip-wrapper { position: relative; display: inline-block; width: 100%; }
-.tooltip-box {
-    position: absolute;
-    bottom: 110%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #111827;
-    color: #e5e7eb;
-    padding: 10px 14px;
-    border-radius: 8px;
-    font-size: 12px;
-    line-height: 1.4;
-    width: 260px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease, transform 0.2s ease;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-    z-index: 100;
-}
-.tooltip-wrapper:hover .tooltip-box {
-    opacity: 1;
-    transform: translateX(-50%) translateY(-4px);
-}
-</style>
-
-<style>
-.tt-wrap { position: relative; width: 100%; }
-.tt-tip {
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 10px);
-  transform: translateX(-50%) translateY(4px);
-  width: 280px;
-  max-width: min(280px, 90vw);
-  background: rgba(15, 23, 42, 0.98);
-  color: #e5e7eb;
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 12px;
-  line-height: 1.45;
-  box-shadow: 0 12px 30px rgba(0,0,0,0.45);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .16s ease, transform .16s ease;
-  z-index: 200;
-}
-.tt-wrap:hover .tt-tip {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
-</style>
 </head>
 
+<body class="subtle-grid">
+  <div class="sticky-topbar">
+    <div class="max-w-[1850px] mx-auto px-4 py-4">
+      <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div class="min-w-0">
+          <div class="flex items-center gap-3 flex-wrap">
+            <div class="pill">Operator Console</div>
+            <div class="pill">Shadow Lab</div>
+            <div class="pill">Live Market Feed</div>
+          </div>
+          <div class="mt-3 flex items-end gap-4 flex-wrap">
+            <div>
+              <div class="text-3xl md:text-4xl font-semibold tracking-tight">Kalshi Quant Desk</div>
+              <div class="text-sm text-slate-400 mt-1">Institutional-grade visibility for paper, shadow, and live execution control.</div>
+            </div>
+          </div>
+        </div>
 
-<body class="text-slate-100 min-h-screen">
-  <div class="max-w-[1700px] mx-auto px-4 py-4">
-    <div class="glass rounded-2xl px-5 py-4 mb-4">
-      <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-        <div>
-          <div class="text-xs uppercase tracking-[0.3em] text-slate-400">Operator Console</div>
-          <div class="text-3xl font-bold mt-1">Kalshi Quant Desk</div>
-          <div class="text-sm text-slate-400 mt-1">Same signal engine. Same order intent. Paper and live split only at execution.</div>
-          <div class="mt-3">
-            <button onclick="downloadDebugReport()" class="rounded-xl px-4 py-2 bg-indigo-700 hover:bg-indigo-600 font-semibold text-sm">
-              Download Debug Report (.txt)
+        <div class="mt-3 flex flex-wrap gap-2">
+            <button onclick="downloadDebugReport()" class="btn bg-indigo-700 hover:bg-indigo-600 text-white">
+            Download Debug Report
+          </button>
+            <button onclick="downloadFullDebugReport()" class="rounded-xl px-4 py-2 bg-fuchsia-700 hover:bg-fuchsia-600 font-semibold text-sm">
+              Download Full Debug
             </button>
           </div>
-        </div>
-        <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
-          <div class="glass rounded-xl px-4 py-3">
-            <div class="text-xs text-slate-400 uppercase">Mode</div>
-            <div id="modeBadge" class="text-xl font-semibold">-</div>
-          </div>
-          <div class="glass rounded-xl px-4 py-3">
-            <div class="text-xs text-slate-400 uppercase">Arm</div>
-            <div id="armBadge" class="text-xl font-semibold">-</div>
-          </div>
-          <div class="glass rounded-xl px-4 py-3">
-            <div class="text-xs text-slate-400 uppercase">Real Cash</div>
-            <div id="cashCard" class="text-xl font-semibold mono">$0.00</div>
-          </div>
-          <div class="glass rounded-xl px-4 py-3">
-            <div class="text-xs text-slate-400 uppercase">Real Portfolio</div>
-            <div id="portfolioCard" class="text-xl font-semibold mono">$0.00</div>
-          </div>
-          <div class="glass rounded-xl px-4 py-3">
-            <div class="text-xs text-slate-400 uppercase">Paper Equity</div>
-            <div id="paperEquityCard" class="text-xl font-semibold mono">$0.00</div>
-          </div>
-          <div class="glass rounded-xl px-4 py-3">
-            <div class="text-xs text-slate-400 uppercase">Paper PnL</div>
-            <div id="paperPnlCard" class="text-xl font-semibold mono">$0.00</div>
-          </div>
-        </div>
-        <div class="mt-3 text-sm text-slate-400">
-          Top Edge: <span id="edgeCard" class="mono text-slate-200">0.0%</span>
-        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="max-w-[1850px] mx-auto px-4 py-5">
+    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-5">
+      <div class="glass rounded-2xl p-4 kpi-card">
+        <div class="section-title">Mode</div>
+        <div id="modeBadge" class="mt-3 text-2xl font-bold">-</div>
+        <div class="text-xs muted mt-1">Execution environment</div>
+      </div>
+
+      <div class="glass rounded-2xl p-4 kpi-card">
+        <div class="section-title">Live Arm</div>
+        <div id="armBadge" class="mt-3 text-2xl font-bold">-</div>
+        <div class="text-xs muted mt-1">Real order safety gate</div>
+      </div>
+
+      <div class="glass rounded-2xl p-4 kpi-card">
+        <div class="section-title">Real Cash</div>
+        <div id="cashCard" class="mt-3 text-2xl font-bold mono">$0.00</div>
+        <div class="text-xs muted mt-1">Available balance</div>
+      </div>
+
+      <div class="glass rounded-2xl p-4 kpi-card">
+        <div class="section-title">Portfolio</div>
+        <div id="portfolioCard" class="mt-3 text-2xl font-bold mono">$0.00</div>
+        <div class="text-xs muted mt-1">Live marked value</div>
+      </div>
+
+      <div class="glass rounded-2xl p-4 kpi-card">
+        <div class="section-title">Paper Equity</div>
+        <div id="paperEquityCard" class="mt-3 text-2xl font-bold mono">$0.00</div>
+        <div class="text-xs muted mt-1">Simulated account equity</div>
+      </div>
+
+      <div class="glass rounded-2xl p-4 kpi-card">
+        <div class="section-title">Top Edge</div>
+        <div id="edgeCard" class="mt-3 text-2xl font-bold mono">0.00%</div>
+        <div class="text-xs muted mt-1">Highest current model edge</div>
       </div>
     </div>
 
-    <div class="grid grid-cols-1 2xl:grid-cols-12 gap-4">
-      <div class="2xl:col-span-3 space-y-4">
-        <div class="glass rounded-2xl p-4">
-          <div class="text-lg font-semibold mb-3">Execution Controls</div>
+    <div class="grid grid-cols-1 2xl:grid-cols-12 gap-5">
+      <!-- LEFT -->
+      <div class="2xl:col-span-3 space-y-5">
+        <div class="glass rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div class="text-lg font-semibold">Execution Controls</div>
+            <div class="pill">Safety First</div>
+          </div>
+
           <div class="grid grid-cols-2 gap-3">
-            <div class="tt-wrap">
-              <button onclick="setMode('paper')" class="w-full rounded-xl px-4 py-5 bg-cyan-700 hover:bg-cyan-600 font-semibold text-2xl">
-                Paper
-              </button>
-              <div class="tt-tip">
-                Runs the strategy on live market data but executes all orders in simulated mode. No real money is used.
-              </div>
-            </div>
-
-            <div class="tt-wrap">
-              <button onclick="setMode('live')" class="w-full rounded-xl px-4 py-5 bg-rose-700 hover:bg-rose-600 font-semibold text-2xl">
-                Live
-              </button>
-              <div class="tt-tip">
-                Switches the bot into real order-routing mode. Live orders still require the live safety switch to be armed.
-              </div>
-            </div>
-
-            <div class="tt-wrap">
-              <button onclick="setArm(true)" class="w-full rounded-xl px-4 py-5 bg-amber-600 hover:bg-amber-500 font-semibold text-2xl">
-                Arm Live
-              </button>
-              <div class="tt-tip">
-                Arms live trading. After this, any valid live-enabled strategy signal may place a real trade.
-              </div>
-            </div>
-
-            <div class="tt-wrap">
-              <button onclick="setArm(false)" class="w-full rounded-xl px-4 py-5 bg-slate-700 hover:bg-slate-600 font-semibold text-2xl">
-                Disarm
-              </button>
-              <div class="tt-tip">
-                Stops any new live trades from being placed. Existing positions are not closed automatically.
-              </div>
-            </div>
+            <button onclick="setMode('paper')" class="btn bg-cyan-700 hover:bg-cyan-600 text-white">Paper</button>
+            <button onclick="setMode('live')" class="btn bg-rose-700 hover:bg-rose-600 text-white">Live</button>
+            <button onclick="setArm(true)" class="btn bg-amber-600 hover:bg-amber-500 text-white">Arm Live</button>
+            <button onclick="setArm(false)" class="btn bg-slate-700 hover:bg-slate-600 text-white">Disarm</button>
           </div>
-        </div><div class="glass rounded-2xl p-4">
-          <div class="text-lg font-semibold mb-3">Risk + Connection</div>
-          <div class="space-y-2 text-sm">
-            <div class="flex justify-between gap-3"><span class="muted">Kalshi base</span><span id="kalshiBase" class="mono text-right break-all"></span></div>
-            <div class="flex justify-between gap-3"><span class="muted">Key loaded</span><span id="keyLoaded"></span></div>
-            <div class="flex justify-between gap-3"><span class="muted">Private key</span><span id="privLoaded"></span></div>
-            <div class="flex justify-between gap-3"><span class="muted">Trading ready</span><span id="tradeReady"></span></div>
+
+          <div id="actionToast" class="text-xs muted mt-4">Ready.</div>
+        </div>
+
+        <div class="glass rounded-2xl p-5">
+          <div class="text-lg font-semibold mb-4">Connection + Risk</div>
+          <div class="space-y-3 text-sm">
+            <div class="flex justify-between gap-3"><span class="muted">Kalshi Base</span><span id="kalshiBase" class="mono text-right break-all"></span></div>
+            <div class="flex justify-between gap-3"><span class="muted">Key Loaded</span><span id="keyLoaded"></span></div>
+            <div class="flex justify-between gap-3"><span class="muted">Private Key</span><span id="privLoaded"></span></div>
+            <div class="flex justify-between gap-3"><span class="muted">Trading Ready</span><span id="tradeReady"></span></div>
+            <div class="flex justify-between gap-3"><span class="muted">WS Status</span><span id="wsStatus"></span></div>
           </div>
         </div>
 
-        <div class="glass rounded-2xl p-4">
-          <div class="text-lg font-semibold mb-3">Spot Tape</div>
-          <div class="grid grid-cols-1 gap-2">
-            <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3 flex justify-between"><span class="muted">BTC</span><span id="spotBTC" class="mono">$0</span></div>
-            <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3 flex justify-between"><span class="muted">ETH</span><span id="spotETH" class="mono">$0</span></div>
-            <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3 flex justify-between"><span class="muted">SOL</span><span id="spotSOL" class="mono">$0</span></div>
+        <div class="glass rounded-2xl p-5">
+          <div class="text-lg font-semibold mb-4">Spot Tape</div>
+          <div class="grid grid-cols-1 gap-3">
+            <div class="glass-soft rounded-xl p-4 flex justify-between items-center"><span class="muted">BTC</span><span id="spotBTC" class="mono text-lg">$0.00</span></div>
+            <div class="glass-soft rounded-xl p-4 flex justify-between items-center"><span class="muted">ETH</span><span id="spotETH" class="mono text-lg">$0.00</span></div>
+            <div class="glass-soft rounded-xl p-4 flex justify-between items-center"><span class="muted">SOL</span><span id="spotSOL" class="mono text-lg">$0.00</span></div>
           </div>
         </div>
 
-        <div class="glass rounded-2xl p-4">
-          <div class="text-lg font-semibold mb-3">Paper Book</div>
-          <div class="grid grid-cols-2 gap-2 mb-3 text-sm">
-            <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Starting</div><div id="paperStart" class="mono text-lg">$0.00</div></div>
-            <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Cash</div><div id="paperCash" class="mono text-lg">$0.00</div></div>
-            <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Market Value</div><div id="paperMarketValue" class="mono text-lg">$0.00</div></div>
-            <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Positions</div><div id="paperPositions" class="mono text-lg">0</div></div>
+        <div class="glass rounded-2xl p-5">
+          <div class="text-lg font-semibold mb-4">Paper Book</div>
+          <div class="grid grid-cols-2 gap-3 mb-4">
+            <div class="glass-soft rounded-xl p-3">
+              <div class="text-xs text-slate-400 uppercase">Starting</div>
+              <div id="paperStart" class="mono text-lg mt-1">$0.00</div>
+            </div>
+            <div class="glass-soft rounded-xl p-3">
+              <div class="text-xs text-slate-400 uppercase">Cash</div>
+              <div id="paperCash" class="mono text-lg mt-1">$0.00</div>
+            </div>
+            <div class="glass-soft rounded-xl p-3">
+              <div class="text-xs text-slate-400 uppercase">Market Value</div>
+              <div id="paperMarketValue" class="mono text-lg mt-1">$0.00</div>
+            </div>
+            <div class="glass-soft rounded-xl p-3">
+              <div class="text-xs text-slate-400 uppercase">Positions</div>
+              <div id="paperPositions" class="mono text-lg mt-1">0</div>
+            </div>
           </div>
-          <pre id="paperBox" class="bg-slate-950/70 border border-white/5 rounded-xl p-4 overflow-auto text-xs text-emerald-300 mono h-48"></pre>
+          <pre id="paperBox" class="glass-soft rounded-xl p-4 text-xs text-emerald-300 mono h-52 overflow-auto"></pre>
         </div>
 
-        <div class="glass rounded-2xl p-4">
-          <div class="text-lg font-semibold mb-3">Strategies</div>
+        <div class="glass rounded-2xl p-5">
+          <div class="text-lg font-semibold mb-4">Strategies</div>
           <div id="strategyControls" class="space-y-3"></div>
         </div>
       </div>
 
-      <div class="2xl:col-span-6 space-y-4">
-        <div class="glass rounded-2xl p-4">
-          <div class="flex items-center justify-between mb-3">
-            <div class="text-lg font-semibold">Scanner</div>
-            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Best Edges First</div>
+      <!-- CENTER -->
+      <div class="2xl:col-span-6 space-y-5">
+        <div class="glass rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <div class="text-lg font-semibold">Scanner</div>
+              <div class="text-sm muted">Best opportunities ranked by model edge</div>
+            </div>
+            <div class="pill">Live Ranking</div>
           </div>
-          <div class="overflow-auto">
-            <table class="w-full text-sm">
-              <thead class="border-b border-white/10 text-slate-400">
+
+          <div class="table-wrap">
+            <table>
+              <thead>
                 <tr>
-                  <th class="text-left py-3 pr-3">Ticker</th>
-                  <th class="text-left py-3 pr-3">Market</th>
-                  <th class="text-right py-3 pr-3">Bid</th>
-                  <th class="text-right py-3 pr-3">Ask</th>
-                  <th class="text-right py-3 pr-3">Mid</th>
-                  <th class="text-right py-3 pr-3">Fair</th>
-                  <th class="text-right py-3 pr-3">Edge</th>
-                  <th class="text-left py-3">Reason</th>
+                  <th class="text-left">Ticker</th>
+                  <th class="text-left">Market</th>
+                  <th class="text-right">Bid</th>
+                  <th class="text-right">Ask</th>
+                  <th class="text-right">Mid</th>
+                  <th class="text-right">Fair</th>
+                  <th class="text-right">Edge</th>
+                  <th class="text-left">Rationale</th>
                 </tr>
               </thead>
-              <tbody id="marketsTable" class="divide-y divide-white/5"></tbody>
+              <tbody id="marketsTable"></tbody>
             </table>
           </div>
         </div>
 
-        <div class="glass rounded-2xl p-4">
-          <div class="flex items-center justify-between mb-3">
-            <div class="text-lg font-semibold">Orders + Fills</div>
-            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Paper / Shadow / Live</div>
+        <div class="glass rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <div class="text-lg font-semibold">Orders + Fills</div>
+              <div class="text-sm muted">Paper, shadow, and live activity in one stream</div>
+            </div>
+            <div class="pill">Execution Ledger</div>
           </div>
-          <div class="overflow-auto">
-            <table class="w-full text-sm">
-              <thead class="border-b border-white/10 text-slate-400">
+
+          <div class="table-wrap">
+            <table>
+              <thead>
                 <tr>
-                  <th class="text-left py-3 pr-3">Time</th>
-                  <th class="text-left py-3 pr-3">Mode</th>
-                  <th class="text-left py-3 pr-3">Strategy</th>
-                  <th class="text-left py-3 pr-3">Ticker</th>
-                  <th class="text-left py-3 pr-3">Side</th>
-                  <th class="text-right py-3 pr-3">Qty</th>
-                  <th class="text-right py-3 pr-3">Req</th>
-                  <th class="text-right py-3 pr-3">Fill</th>
-                  <th class="text-right py-3 pr-3">Edge</th>
-                  <th class="text-left py-3">Status</th>
+                  <th class="text-left">Time</th>
+                  <th class="text-left">Mode</th>
+                  <th class="text-left">Strategy</th>
+                  <th class="text-left">Ticker</th>
+                  <th class="text-left">Side</th>
+                  <th class="text-right">Qty</th>
+                  <th class="text-right">Requested</th>
+                  <th class="text-right">Fill</th>
+                  <th class="text-right">Edge</th>
+                  <th class="text-left">Status</th>
                 </tr>
               </thead>
-              <tbody id="tradesTable" class="divide-y divide-white/5"></tbody>
+              <tbody id="tradesTable"></tbody>
             </table>
           </div>
+        </div>
+
+        <div class="glass rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <div class="text-lg font-semibold">Recent Logs</div>
+              <div class="text-sm muted">Operational heartbeat and errors</div>
+            </div>
+            <div class="pill">Telemetry</div>
+          </div>
+          <pre id="logsBox" class="glass-soft rounded-xl p-4 text-xs text-fuchsia-300 mono h-[28rem] overflow-auto"></pre>
         </div>
       </div>
 
-      <div class="2xl:col-span-3 space-y-4">
-        <div class="glass rounded-2xl p-4">
-          <div class="text-lg font-semibold mb-3">Pipeline Health</div>
-          <div class="grid grid-cols-2 gap-2 text-sm mb-3">
-            <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Raw</div><div id="pipeRaw" class="mono text-lg">0</div></div>
-            <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Normalized</div><div id="pipeNorm" class="mono text-lg">0</div></div>
-            <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Classified</div><div id="pipeClass" class="mono text-lg">0</div></div>
-            <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Eligible</div><div id="pipeEligible" class="mono text-lg">0</div></div>
+      <!-- RIGHT -->
+      <div class="2xl:col-span-3 space-y-5">
+        <div class="glass rounded-2xl p-5">
+          <div class="text-lg font-semibold mb-4">Pipeline Health</div>
+          <div class="grid grid-cols-2 gap-3 mb-4">
+            <div class="glass-soft rounded-xl p-3"><div class="text-xs text-slate-400 uppercase">Raw</div><div id="pipeRaw" class="mono text-lg mt-1">0</div></div>
+            <div class="glass-soft rounded-xl p-3"><div class="text-xs text-slate-400 uppercase">Normalized</div><div id="pipeNorm" class="mono text-lg mt-1">0</div></div>
+            <div class="glass-soft rounded-xl p-3"><div class="text-xs text-slate-400 uppercase">Classified</div><div id="pipeClass" class="mono text-lg mt-1">0</div></div>
+            <div class="glass-soft rounded-xl p-3"><div class="text-xs text-slate-400 uppercase">Eligible</div><div id="pipeEligible" class="mono text-lg mt-1">0</div></div>
+            <div class="glass-soft rounded-xl p-3"><div class="text-xs text-slate-400 uppercase">Shadow Candidates</div><div id="pipeShadowCandidates" class="mono text-lg mt-1">0</div></div>
+            <div class="glass-soft rounded-xl p-3"><div class="text-xs text-slate-400 uppercase">Cached</div><div id="pipeCached" class="mono text-lg mt-1">0</div></div>
           </div>
-          <pre id="pipelineBox" class="bg-slate-950/70 border border-white/5 rounded-xl p-4 overflow-auto text-xs text-amber-300 mono h-48 mb-4"></pre>
-          <div class="text-lg font-semibold mb-3">System Health</div>
-          <pre id="healthBox" class="bg-slate-950/70 border border-white/5 rounded-xl p-4 overflow-auto text-xs text-cyan-300 mono h-56"></pre>
+          <pre id="pipelineBox" class="glass-soft rounded-xl p-4 text-xs text-amber-300 mono h-56 overflow-auto"></pre>
         </div>
 
-        <div class="glass rounded-2xl p-4">
-          <div class="text-lg font-semibold mb-3">Activity Feed</div>
-          <div id="logsBox" class="bg-slate-950/70 border border-white/5 rounded-xl p-4 overflow-auto text-xs text-emerald-300 mono h-72 space-y-2"></div>
+        <div class="glass rounded-2xl p-5">
+          <div class="text-lg font-semibold mb-4">System Health</div>
+          <pre id="healthBox" class="glass-soft rounded-xl p-4 text-xs text-cyan-300 mono h-56 overflow-auto"></pre>
+        </div>
+
+        <div class="glass rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div class="text-lg font-semibold">Strategy Lab</div>
+            <div class="pill">Optimization</div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 mb-4">
+            <div class="glass-soft rounded-xl p-3">
+              <div class="text-xs text-slate-400 uppercase">Candidate Events</div>
+              <div id="slCandidateEvents" class="mono text-lg mt-1">0</div>
+            </div>
+            <div class="glass-soft rounded-xl p-3">
+              <div class="text-xs text-slate-400 uppercase">Shadow Positions</div>
+              <div id="slShadowPositions" class="mono text-lg mt-1">0</div>
+            </div>
+            <div class="glass-soft rounded-xl p-3 col-span-2">
+              <div class="text-xs text-slate-400 uppercase">Best Variant</div>
+              <div id="slBestVariant" class="mono text-sm mt-1">-</div>
+            </div>
+          </div>
+
+          <div class="glass-soft rounded-xl p-4 mb-4">
+            <div class="text-sm font-semibold mb-3">Manual Override</div>
+            <div class="grid grid-cols-1 gap-3">
+              <input id="slFormStrategy" class="input mono" value="crypto_lag" placeholder="strategy_name" />
+              <input id="slFormVariant" class="input mono" value="crypto_lag_aggressive" placeholder="variant_name" />
+              <input id="slFormParam" class="input mono" value="min_edge" placeholder="parameter_name" />
+              <input id="slFormValue" class="input mono" value="0.018" placeholder="value_text" />
+              <button onclick="saveStrategyLabSetting()" class="btn bg-indigo-700 hover:bg-indigo-600 text-white">
+                Save Override
+              </button>
+              <div id="slFormResult" class="text-xs muted">No action yet.</div>
+            </div>
+          </div>
+
+          <div class="space-y-4">
+            <div>
+              <div class="text-sm font-semibold mb-2">Summaries</div>
+              <pre id="slSummariesBox" class="glass-soft rounded-xl p-3 text-xs text-cyan-300 mono h-40 overflow-auto"></pre>
+            </div>
+            <div>
+              <div class="text-sm font-semibold mb-2">Suggestions</div>
+              <pre id="slSuggestionsBox" class="glass-soft rounded-xl p-3 text-xs text-emerald-300 mono h-40 overflow-auto"></pre>
+            </div>
+            <div>
+              <div class="text-sm font-semibold mb-2">Shadow Positions</div>
+              <pre id="slPositionsBox" class="glass-soft rounded-xl p-3 text-xs text-amber-300 mono h-40 overflow-auto"></pre>
+            </div>
+            <div>
+              <div class="text-sm font-semibold mb-2">Operator Settings</div>
+              <pre id="slSettingsBox" class="glass-soft rounded-xl p-3 text-xs text-fuchsia-300 mono h-40 overflow-auto"></pre>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <script>
-    function money(n) {
-      if (n === null || n === undefined || Number.isNaN(Number(n))) return "-";
-      return "$" + Number(n).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-    }
-    function px(n) {
-      if (n === null || n === undefined || Number.isNaN(Number(n))) return "-";
-      return Number(n).toFixed(4);
-    }
-    function pct(n) {
-      if (n === null || n === undefined || Number.isNaN(Number(n))) return "-";
-      return (Number(n) * 100).toFixed(1) + "%";
-    }
-    function yesNo(v) {
-      return v ? "YES" : "NO";
-    }
-
-    async function postJson(url, payload) {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.detail || "request failed");
-      await load();
-    }
-
-    async function setMode(mode) {
-      try { await postJson("/api/mode", { mode }); } catch (e) { alert(e.message); }
-    }
-
-    async function setArm(armed) {
-      try { await postJson("/api/arm-live", { armed }); } catch (e) { alert(e.message); }
-    }
-
-    async function setStrategy(name, enabled, liveEnabled) {
-      try { await postJson(`/api/strategy/${name}`, { enabled, live_enabled: liveEnabled }); } catch (e) { alert(e.message); }
-    }
-
-    function renderStrategy(name, s) {
-      const scanColor = s.enabled ? "text-emerald-400" : "text-slate-500";
-      const liveColor = s.live_enabled ? "text-rose-400" : "text-slate-500";
-      return `
-        <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="font-semibold">${name}</div>
-              <div class="text-xs text-slate-400">edge ≥ ${pct(s.min_edge)} | spread ≤ ${pct(s.max_spread)}</div>
-              <div class="text-xs text-slate-400 mt-1">cooldown ${s.cooldown_seconds}s | ticket $${s.max_ticket_dollars}</div>
-            </div>
-            <div class="text-right text-xs">
-              <div class="${scanColor}">SCAN ${s.enabled ? "ON" : "OFF"}</div>
-              <div class="${liveColor}">LIVE ${s.live_enabled ? "ON" : "OFF"}</div>
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-2 mt-3">
-            <button onclick="setStrategy('${name}', ${!s.enabled}, ${s.live_enabled})" class="rounded-lg px-3 py-2 ${s.enabled ? 'bg-slate-800 hover:bg-slate-700' : 'bg-emerald-700 hover:bg-emerald-600'}">${s.enabled ? 'Disable Scan' : 'Enable Scan'}</button>
-            <button onclick="setStrategy('${name}', ${s.enabled}, ${!s.live_enabled})" class="rounded-lg px-3 py-2 ${s.live_enabled ? 'bg-slate-800 hover:bg-slate-700' : 'bg-rose-800 hover:bg-rose-700'}">${s.live_enabled ? 'Disable Live' : 'Enable Live'}</button>
-          </div>
+  
+    <div id="paperSessionPanel" class="glass rounded-2xl p-4 mt-4">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <div class="text-lg font-semibold">Paper Session Scorecard</div>
+          <div class="text-sm text-slate-400">Everything below is scoped to the current paper run since the last reset.</div>
         </div>
-      `;
-    }
+        <div id="psReadyBadge" class="rounded-full px-3 py-1 text-xs font-semibold bg-slate-700 text-slate-100">-</div>
+      </div>
 
-    function renderMarkets(markets) {
-      const body = document.getElementById("marketsTable");
-      body.innerHTML = markets.map(m => `
-        <tr class="align-top">
-          <td class="py-3 pr-3 mono">${m.ticker}</td>
-          <td class="py-3 pr-3">
-            <div class="font-medium">${m.title}</div>
-            <div class="text-xs text-slate-400 mt-1">${m.category || ''}</div>
-          </td>
-          <td class="py-3 pr-3 text-right mono">${px(m.yes_bid)}</td>
-          <td class="py-3 pr-3 text-right mono">${px(m.yes_ask)}</td>
-          <td class="py-3 pr-3 text-right mono">${px(m.mid)}</td>
-          <td class="py-3 pr-3 text-right mono">${px(m.fair_yes)}</td>
-          <td class="py-3 pr-3 text-right mono ${Number(m.edge || 0) >= 0 ? 'good' : 'bad'}">${pct(m.edge)}</td>
-          <td class="py-3 text-xs text-slate-400">${m.rationale || ''}</td>
-        </tr>
-      `).join("");
-    }
+      <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3 mb-4 text-sm">
+        <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Enabled</div><div id="psEnabled" class="mono text-lg">-</div></div>
+        <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Can Trade</div><div id="psCanTrade" class="mono text-lg">-</div></div>
+        <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Reset At</div><div id="psResetAt" class="mono text-xs break-all">-</div></div>
+        <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Closed</div><div id="psClosedTrades" class="mono text-lg">0</div></div>
+        <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Open</div><div id="psOpenTrades" class="mono text-lg">0</div></div>
+        <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Win Rate</div><div id="psWinRate" class="mono text-lg">0.00%</div></div>
+        <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Realized PnL</div><div id="psRealizedPnl" class="mono text-lg">$0.00</div></div>
+        <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Avg / Trade</div><div id="psAvgPnl" class="mono text-lg">$0.00</div></div>
+      </div>
 
-    function renderTrades(trades) {
-      const body = document.getElementById("tradesTable");
-      body.innerHTML = trades.map(t => {
-        const modeClass = t.mode === "live" ? "text-rose-300" : (t.is_shadow ? "text-cyan-300" : "text-emerald-300");
-        const statusClass = String(t.status).includes("fill") ? "good" : (String(t.status).includes("error") ? "bad" : "text-slate-300");
-        return `
-          <tr class="align-top">
-            <td class="py-3 pr-3 text-xs text-slate-400">${t.created_at ? new Date(t.created_at).toLocaleString() : '-'}</td>
-            <td class="py-3 pr-3 ${modeClass}">${t.mode}</td>
-            <td class="py-3 pr-3">${t.strategy}</td>
-            <td class="py-3 pr-3 mono">${t.ticker}</td>
-            <td class="py-3 pr-3 uppercase">${t.side}</td>
-            <td class="py-3 pr-3 text-right mono">${Number(t.contracts || 0).toFixed(0)}</td>
-            <td class="py-3 pr-3 text-right mono">${px(t.requested_price)}</td>
-            <td class="py-3 pr-3 text-right mono">${px(t.fill_price)}</td>
-            <td class="py-3 pr-3 text-right mono ${Number(t.edge || 0) >= 0 ? 'good' : 'bad'}">${pct(t.edge)}</td>
-            <td class="py-3 text-xs ${statusClass}">${t.status}${t.message ? ' · ' + t.message : ''}</td>
-          </tr>
-        `;
-      }).join("");
-    }
+      <div class="grid grid-cols-1 xl:grid-cols-4 gap-4">
+        <div class="xl:col-span-1">
+          <div class="text-sm font-semibold mb-2">Readiness Notes</div>
+          <pre id="psReadinessBox" class="bg-slate-950/70 border border-white/5 rounded-xl p-3 overflow-auto text-xs text-fuchsia-300 mono h-48"></pre>
+        </div>
+        <div class="xl:col-span-1">
+          <div class="text-sm font-semibold mb-2">Close Reasons</div>
+          <pre id="psCloseReasonsBox" class="bg-slate-950/70 border border-white/5 rounded-xl p-3 overflow-auto text-xs text-emerald-300 mono h-48"></pre>
+        </div>
+        <div class="xl:col-span-1">
+          <div class="text-sm font-semibold mb-2">By Variant</div>
+          <pre id="psVariantBox" class="bg-slate-950/70 border border-white/5 rounded-xl p-3 overflow-auto text-xs text-cyan-300 mono h-48"></pre>
+        </div>
+        <div class="xl:col-span-1">
+          <div class="text-sm font-semibold mb-2">Recent Trades</div>
+          <pre id="psRecentBox" class="bg-slate-950/70 border border-white/5 rounded-xl p-3 overflow-auto text-xs text-amber-300 mono h-48"></pre>
+        </div>
+      </div>
+    </div>
 
-    async function downloadDebugReport() {
-      const res = await fetch("/api/debug-report");
-      if (!res.ok) {
-        alert("Failed to generate debug report");
-        return;
-      }
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      const disposition = res.headers.get("Content-Disposition") || "";
-      const match = disposition.match(/filename="([^"]+)"/);
-      a.href = url;
-      a.download = match ? match[1] : "kalshi-debug-report.txt";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-    }
 
-    async function load() {
-      const res = await fetch("/api/status");
-      const data = await res.json();
-
-      document.getElementById("modeBadge").textContent = data.mode.toUpperCase();
-      document.getElementById("modeBadge").className = data.mode === "live" ? "text-xl font-semibold bad" : "text-xl font-semibold text-cyan-300";
-      document.getElementById("armBadge").textContent = data.live_armed ? "ARMED" : "DISARMED";
-      document.getElementById("armBadge").className = data.live_armed ? "text-xl font-semibold warn" : "text-xl font-semibold text-slate-500";
-
-      document.getElementById("cashCard").textContent = money(data.balances?.kalshi_balance ?? 0);
-      document.getElementById("portfolioCard").textContent = money(data.balances?.portfolio_value ?? 0);
-      document.getElementById("paperEquityCard").textContent = money(data.paper?.equity ?? 0);
-      document.getElementById("paperPnlCard").textContent = money(data.paper?.unrealized_pnl ?? 0);
-      document.getElementById("paperPnlCard").className =
-        "text-xl font-semibold mono " + ((data.paper?.unrealized_pnl ?? 0) > 0 ? "good" : ((data.paper?.unrealized_pnl ?? 0) < 0 ? "bad" : "text-slate-200"));
-      document.getElementById("edgeCard").textContent = pct(data.top_edge);
-
-      document.getElementById("spotBTC").textContent = money(data.spots.BTC);
-      document.getElementById("spotETH").textContent = money(data.spots.ETH);
-      document.getElementById("spotSOL").textContent = money(data.spots.SOL);
-
-      document.getElementById("paperStart").textContent = money(data.paper?.starting_balance ?? 0);
-      document.getElementById("paperCash").textContent = money(data.paper?.cash ?? 0);
-      document.getElementById("paperMarketValue").textContent = money(data.paper?.market_value ?? 0);
-      document.getElementById("paperPositions").textContent = String(data.paper?.position_count ?? 0);
-
-      const paperPositions = (data.paper?.positions || []).map(p =>
-        `${p.ticker} ${String(p.side).toUpperCase()} x${Number(p.contracts).toFixed(0)} | cost ${p.avg_cost.toFixed(4)} | mark ${p.mark_price.toFixed(4)} | pnl ${money(p.unrealized_pnl)}`
-      ).join("\n");
-      document.getElementById("paperBox").textContent = paperPositions || "No paper positions yet.";
-
-      document.getElementById("kalshiBase").textContent = data.credentials.kalshi_base_url;
-      document.getElementById("keyLoaded").textContent = yesNo(data.credentials.kalshi_key_loaded);
-      document.getElementById("privLoaded").textContent = yesNo(data.credentials.kalshi_private_key_loaded);
-      document.getElementById("tradeReady").textContent = yesNo(data.credentials.kalshi_trading_enabled);
-
-      document.getElementById("strategyControls").innerHTML =
-        Object.entries(data.strategies).map(([name, s]) => renderStrategy(name, s)).join("");
-
-      document.getElementById("pipeRaw").textContent = String(data.pipeline?.raw_open_markets ?? 0);
-      document.getElementById("pipeNorm").textContent = String(data.pipeline?.normalized_markets ?? 0);
-      document.getElementById("pipeClass").textContent = String(data.pipeline?.classified_crypto_markets ?? 0);
-      document.getElementById("pipeEligible").textContent = String(data.pipeline?.eligible_markets ?? 0);
-
-      renderMarkets(data.markets || []);
-      renderTrades(data.recent_trades || []);
-      document.getElementById("pipelineBox").textContent = JSON.stringify(data.pipeline || {}, null, 2);
-      document.getElementById("healthBox").textContent = JSON.stringify(data.health, null, 2);
-      document.getElementById("logsBox").innerHTML = (data.logs || []).map(x => `<div>${x}</div>`).join("");
-    }
-
-    load();
-    setInterval(load, 5000);
-  </script>
+  <script src="/static/app.js"></script>
 </body>
 </html>
