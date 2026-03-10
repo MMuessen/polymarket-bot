@@ -1,0 +1,66 @@
+# git
+.git
+.gitignore
+.github/
+
+# giant local-only folders
+actions-runner/
+ollama_data/
+ollama/
+models/
+.cache/
+
+# python cache / env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.python-version
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# build artifacts
+build/
+dist/
+*.egg-info/
+
+# local editor / OS junk
+.DS_Store
+.idea/
+.vscode/
+
+# logs / temp
+*.log
+logs/
+tmp/
+temp/
+trading_session.log
+
+# notebooks / screenshots / reports
+*.ipynb
+screenshots/
+artifacts/
+reports/
+
+# local backups / handoff clutter
+*.bak
+*.bak.*
+*~
+NEXT_CHAT_DEBUG_BUNDLE.md
+handoff/
+backup_before_fix/
+
+# secrets / local config that should not be baked into image
+.env
+.env.*
+kalshi_private_key.pem
+
+# docker leftovers
+docker-data/
+
+# optional heavy local runtime data
+data/

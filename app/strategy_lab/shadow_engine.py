@@ -1,0 +1,632 @@
+from datetime import datetime, timezone
+from app.strategy_lab.config import DEFAULT_VARIANTS
+from app.strategy_lab.storage import get_conn, json_dumps
+
+
+def _utc_now():
+    return datetime.now(timezone.utc)
+
+
+class ShadowEngine:
+    MAX_OPEN_TOTAL = 8
+    MAX_OPEN_PER_VARIANT = 3
+    MAX_OPEN_PER_CLUSTER = 2
+    MAX_DAILY_ATTEMPTS_PER_TICKER_VARIANT = 3
+    TICKER_REENTRY_COOLDOWN_MINUTES = 45
+    TICKER_LOSS_BAN_MINUTES = 180
+
+    # new global ticker stacking controls
+    MAX_OPEN_PER_TICKER_ALL_VARIANTS = 1
+    MAX_OPEN_PER_CLUSTER_ALL_VARIANTS = 3
+
+    def __init__(self, bot):
+        self.bot = bot
+
+    def _variant_settings(self, variant_name):
+        base = DEFAULT_VARIANTS[variant_name]
+        if hasattr(self.bot, "get_effective_variant_settings"):
+            return self.bot.get_effective_variant_settings(variant_name, base)
+        return base
+
+    def _market_store(self):
+        return getattr(self.bot, "market_snapshots", {}) or {}
+
+    def _hours_to_expiry(self, snapshot):
+        if not getattr(snapshot, "raw_close_time", None):
+            return None
+        return max((snapshot.raw_close_time - _utc_now()).total_seconds() / 3600.0, 0.0)
+
+    def _cluster_key(self, snapshot):
+        floor = getattr(snapshot, "floor_strike", None)
+        if floor is None:
+            threshold = getattr(snapshot, "threshold", None)
+            if threshold is None:
+                return "unknown"
+            floor = threshold
+        try:
+            floor = float(floor)
+        except Exception:
+            return "unknown"
+        return int(round(floor / 1000.0) * 1000)
+
+    def _already_open(self, ticker, variant_name):
+        conn = get_conn()
+        try:
+            row = conn.execute(
+                "SELECT 1 FROM shadow_positions WHERE ticker = ? AND variant_name = ? LIMIT 1",
+                (ticker, variant_name),
+            ).fetchone()
+            return row is not None
+        finally:
+            conn.close()
+
+    def _open_counts(self, variant_name=None):
+        conn = get_conn()
+        try:
+            if variant_name:
+                row = conn.execute(
+                    "SELECT COUNT(*) FROM shadow_positions WHERE variant_name = ?",
+                    (variant_name,),
+                ).fetchone()
+            else:
+                row = conn.execute("SELECT COUNT(*) FROM shadow_positions").fetchone()
+            return int(row[0] or 0)
+        finally:
+            conn.close()
+
+    def _open_ticker_count_all_variants(self, ticker):
+        conn = get_conn()
+        try:
+            row = conn.execute(
+                "SELECT COUNT(*) FROM shadow_positions WHERE ticker = ?",
+                (ticker,),
+            ).fetchone()
+            return int(row[0] or 0)
+        finally:
+            conn.close()
+
+    def _open_cluster_count(self, variant_name, cluster_key):
+        conn = get_conn()
+        try:
+            rows = conn.execute(
+                "SELECT ticker FROM shadow_positions WHERE variant_name = ?",
+                (variant_name,),
+            ).fetchall()
+        finally:
+            conn.close()
+
+        count = 0
+        store = self._market_store()
+        for row in rows:
+            snap = store.get(row["ticker"])
+            if not snap:
+                continue
+            if self._cluster_key(snap) == cluster_key:
+                count += 1
+        return count
+
+    def _open_cluster_count_all_variants(self, cluster_key):
+        conn = get_conn()
+        try:
+            rows = conn.execute("SELECT ticker FROM shadow_positions").fetchall()
+        finally:
+            conn.close()
+
+        count = 0
+        store = self._market_store()
+        for row in rows:
+            snap = store.get(row["ticker"])
+            if not snap:
+                continue
+            if self._cluster_key(snap) == cluster_key:
+                count += 1
+        return count
+
+    def _attempts_today(self, ticker, variant_name):
+        conn = get_conn()
+        try:
+            row = conn.execute(
+                """
+                SELECT COUNT(*)
+                FROM shadow_trades
+                WHERE ticker = ?
+                  AND variant_name = ?
+                  AND opened_at >= datetime('now', '-1 day')
+                """,
+                (ticker, variant_name),
+            ).fetchone()
+            return int(row[0] or 0)
+        finally:
+            conn.close()
+
+    def _recent_close(self, ticker, variant_name, minutes):
+        conn = get_conn()
+        try:
+            row = conn.execute(
+                """
+                SELECT close_reason, outcome, closed_at
+                FROM shadow_trades
+                WHERE ticker = ?
+                  AND variant_name = ?
+                  AND closed_at IS NOT NULL
+                  AND closed_at >= datetime('now', ?)
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                (ticker, variant_name, f"-{int(minutes)} minutes"),
+            ).fetchone()
+            return row
+        finally:
+            conn.close()
+
+    def _passes_portfolio_rules(self, snapshot, variant_name):
+        if self._open_counts() >= self.MAX_OPEN_TOTAL:
+            return False, "portfolio_total_cap_variant"
+
+        if self._open_counts(variant_name) >= self.MAX_OPEN_PER_VARIANT:
+            return False, "portfolio_variant_cap_variant"
+
+        if self._open_ticker_count_all_variants(snapshot.ticker) >= self.MAX_OPEN_PER_TICKER_ALL_VARIANTS:
+            return False, "ticker_global_cap_variant"
+
+        cluster_key = self._cluster_key(snapshot)
+
+        if self._open_cluster_count(variant_name, cluster_key) >= self.MAX_OPEN_PER_CLUSTER:
+            return False, "cluster_cap_variant"
+
+        if self._open_cluster_count_all_variants(cluster_key) >= self.MAX_OPEN_PER_CLUSTER_ALL_VARIANTS:
+            return False, "cluster_global_cap_variant"
+
+        return True, "portfolio_ok"
+
+    def _passes_variant_rules(self, snapshot, variant_name):
+        cfg = self._variant_settings(variant_name)
+
+        if snapshot.mid is None or snapshot.spread is None or snapshot.edge is None:
+            return False, "missing_core_fields"
+
+        if getattr(snapshot, "market_family", None) != "range_bucket":
+            return False, "unsupported_market_family_variant"
+
+        if getattr(snapshot, "status", "").lower() not in {"active", "open", "initialized"}:
+            return False, "status_not_tradeable_variant"
+
+        hours = self._hours_to_expiry(snapshot)
+        if hours is None:
+            return False, "missing_hours"
+
+        if hours < float(cfg["min_hours"]):
+            return False, "too_close_to_expiry_variant"
+        if hours > float(cfg["max_hours"]):
+            return False, "too_far_to_expiry_variant"
+
+        spread = float(snapshot.spread or 0.0)
+        if spread > float(cfg["max_spread"]):
+            return False, "spread_too_wide_variant"
+
+        edge = float(snapshot.edge or 0.0)
+        if edge < float(cfg["min_edge"]):
+            return False, "edge_too_small_variant"
+
+        ask = float(snapshot.yes_ask or 0.0)
+        if ask <= 0.0:
+            return False, "missing_yes_ask_variant"
+
+        if ask < 0.06:
+            return False, "ask_too_cheap_variant"
+
+        if ask < 0.10 and edge < max(float(cfg["min_edge"]), 0.03):
+            return False, "ask_edge_too_small_variant"
+
+        recent_loss = self._recent_close(
+            snapshot.ticker, variant_name, self.TICKER_LOSS_BAN_MINUTES
+        )
+        if recent_loss and str(recent_loss["outcome"] or "").lower() == "loss":
+            return False, "ticker_loss_ban_variant"
+
+        recent_any = self._recent_close(
+            snapshot.ticker, variant_name, self.TICKER_REENTRY_COOLDOWN_MINUTES
+        )
+        if recent_any:
+            return False, "ticker_reentry_cooldown_variant"
+
+        if self._attempts_today(snapshot.ticker, variant_name) >= self.MAX_DAILY_ATTEMPTS_PER_TICKER_VARIANT:
+            return False, "ticker_daily_attempt_cap_variant"
+
+        ok, reason = self._passes_portfolio_rules(snapshot, variant_name)
+        if not ok:
+            return False, reason
+
+        return True, "eligible_variant"
+
+    def log_candidate(self, variant_name, snapshot, eligible, rejection_reason=None, regime_name=None):
+        conn = get_conn()
+        try:
+            conn.execute(
+                """
+                INSERT INTO candidate_events (
+                    ts, strategy_name, variant_name, ticker, market_family, status,
+                    spot_symbol, spot_price, floor_strike, cap_strike, threshold, direction,
+                    yes_bid, yes_ask, no_bid, no_ask, mid, spread, fair_yes, edge,
+                    hours_to_expiry, distance_from_spot_pct, liquidity, volume_24h, open_interest,
+                    eligible, rejection_reason, regime_name, meta_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    _utc_now().isoformat(),
+                    "crypto_lag",
+                    variant_name,
+                    snapshot.ticker,
+                    getattr(snapshot, "market_family", None),
+                    getattr(snapshot, "status", None),
+                    getattr(snapshot, "spot_symbol", "BTC"),
+                    float(self.bot.spot_prices.get(getattr(snapshot, "spot_symbol", "BTC")) or 0.0),
+                    getattr(snapshot, "floor_strike", None),
+                    getattr(snapshot, "cap_strike", None),
+                    getattr(snapshot, "threshold", None),
+                    getattr(snapshot, "direction", None),
+                    getattr(snapshot, "yes_bid", None),
+                    getattr(snapshot, "yes_ask", None),
+                    getattr(snapshot, "no_bid", None),
+                    getattr(snapshot, "no_ask", None),
+                    getattr(snapshot, "mid", None),
+                    getattr(snapshot, "spread", None),
+                    getattr(snapshot, "fair_yes", None),
+                    getattr(snapshot, "edge", None),
+                    self._hours_to_expiry(snapshot),
+                    getattr(snapshot, "distance_from_spot_pct", None),
+                    getattr(snapshot, "liquidity", None),
+                    getattr(snapshot, "volume_24h", None),
+                    getattr(snapshot, "open_interest", None),
+                    1 if eligible else 0,
+                    rejection_reason,
+                    regime_name,
+                    json_dumps(
+                        {
+                            "rationale": getattr(snapshot, "rationale", ""),
+                            "cluster_key": self._cluster_key(snapshot),
+                        }
+                    ),
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def _size_from_edge(self, variant_name, snapshot):
+        cfg = self._variant_settings(variant_name)
+        base_dollars = float(
+            getattr(self.bot.strategy_states["crypto_lag"], "max_ticket_dollars", 25) or 25.0
+        )
+
+        edge = max(float(snapshot.edge or 0.0), 0.0)
+        min_edge = max(float(cfg["min_edge"]), 0.0001)
+
+        edge_ratio = min(edge / min_edge, 2.0)
+        dollars = base_dollars * float(cfg["size_multiplier"]) * edge_ratio
+
+        spread = float(snapshot.spread or 0.0)
+        spread_penalty = max(0.35, 1.0 - spread * 3.0)
+        dollars *= spread_penalty
+
+        dist = float(getattr(snapshot, "distance_from_spot_pct", 0.0) or 0.0)
+        dist_penalty = max(0.5, 1.0 - min(dist, 0.12))
+        dollars *= dist_penalty
+
+        ask = float(snapshot.yes_ask or 0.0)
+        if ask < 0.10:
+            dollars *= 0.60
+        elif ask < 0.15:
+            dollars *= 0.80
+
+        dollars = max(5.0, min(dollars, base_dollars * float(cfg.get("exposure_multiplier", 1.0)) * 1.5))
+        qty = max(1, int(dollars / max(ask, 0.01)))
+        return qty, dollars
+
+    def open_shadow_trade(self, variant_name, snapshot, qty, entry_price, regime_name):
+        if self._already_open(snapshot.ticker, variant_name):
+            return False
+
+        conn = get_conn()
+        now = _utc_now().isoformat()
+        try:
+            conn.execute(
+                """
+                INSERT INTO shadow_trades (
+                    opened_at, strategy_name, variant_name, regime_name, ticker, side, qty,
+                    entry_price, edge_at_entry, spread_at_entry, hours_to_expiry_at_entry,
+                    distance_from_spot_pct_at_entry, max_favorable_excursion, max_adverse_excursion,
+                    best_mark_price, worst_mark_price, entry_edge, edge_at_exit, spread_at_exit,
+                    distance_from_spot_pct_at_exit, minutes_open, meta_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    now,
+                    "crypto_lag",
+                    variant_name,
+                    regime_name,
+                    snapshot.ticker,
+                    "yes",
+                    int(qty),
+                    float(entry_price),
+                    float(snapshot.edge or 0.0),
+                    float(snapshot.spread or 0.0),
+                    self._hours_to_expiry(snapshot),
+                    float(getattr(snapshot, "distance_from_spot_pct", 0.0) or 0.0),
+                    0.0,
+                    0.0,
+                    float(snapshot.mid or entry_price),
+                    float(snapshot.mid or entry_price),
+                    float(snapshot.edge or 0.0),
+                    None,
+                    None,
+                    None,
+                    None,
+                    json_dumps({"rationale": getattr(snapshot, "rationale", "")}),
+                ),
+            )
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO shadow_positions (
+                    ticker, variant_name, opened_at, strategy_name, regime_name, side, qty,
+                    entry_price, last_mark_price, unrealized_pnl, best_mark_price, worst_mark_price,
+                    entry_edge, last_edge, last_spread
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    snapshot.ticker,
+                    variant_name,
+                    now,
+                    "crypto_lag",
+                    regime_name,
+                    "yes",
+                    int(qty),
+                    float(entry_price),
+                    float(snapshot.mid or entry_price),
+                    0.0,
+                    float(snapshot.mid or entry_price),
+                    float(snapshot.mid or entry_price),
+                    float(snapshot.edge or 0.0),
+                    float(snapshot.edge or 0.0),
+                    float(snapshot.spread or 0.0),
+                ),
+            )
+            conn.commit()
+            return True
+        finally:
+            conn.close()
+
+    def mark_positions(self):
+        conn = get_conn()
+        try:
+            rows = conn.execute("SELECT * FROM shadow_positions").fetchall()
+            for row in rows:
+                snapshot = self._market_store().get(row["ticker"])
+                if not snapshot or snapshot.mid is None:
+                    continue
+
+                entry = float(row["entry_price"] or 0.0)
+                qty = int(row["qty"] or 0)
+                side = str(row["side"] or "yes").lower()
+                bid_mark = getattr(snapshot, "no_bid", None) if side == "no" else getattr(snapshot, "yes_bid", None)
+                if bid_mark is None:
+                    bid_mark = snapshot.mid
+                mark = float((bid_mark if bid_mark is not None else entry) or entry)
+                unrealized = (mark - entry) * qty
+
+                best_mark = max(float(row["best_mark_price"] or mark), mark)
+                worst_mark = min(float(row["worst_mark_price"] or mark), mark)
+
+                conn.execute(
+                    """
+                    UPDATE shadow_positions
+                    SET last_mark_price = ?, unrealized_pnl = ?, best_mark_price = ?, worst_mark_price = ?,
+                        last_edge = ?, last_spread = ?
+                    WHERE ticker = ? AND variant_name = ?
+                    """,
+                    (
+                        mark,
+                        unrealized,
+                        best_mark,
+                        worst_mark,
+                        float(snapshot.edge or 0.0),
+                        float(snapshot.spread or 0.0),
+                        row["ticker"],
+                        row["variant_name"],
+                    ),
+                )
+
+                trade_id_row = conn.execute(
+                    """
+                    SELECT id
+                    FROM shadow_trades
+                    WHERE ticker = ? AND variant_name = ? AND closed_at IS NULL
+                    ORDER BY id DESC
+                    LIMIT 1
+                    """,
+                    (row["ticker"], row["variant_name"]),
+                ).fetchone()
+
+                if trade_id_row:
+                    trade_id = int(trade_id_row[0])
+                    mfe = max((best_mark - entry) * qty, 0.0)
+                    mae = min((worst_mark - entry) * qty, 0.0)
+                    conn.execute(
+                        """
+                        UPDATE shadow_trades
+                        SET max_favorable_excursion = ?, max_adverse_excursion = ?,
+                            best_mark_price = ?, worst_mark_price = ?
+                        WHERE id = ?
+                        """,
+                        (mfe, mae, best_mark, worst_mark, trade_id),
+                    )
+
+            conn.commit()
+        finally:
+            conn.close()
+
+    def _should_exit(self, row, snapshot):
+        entry = float(row["entry_price"] or 0.0)
+        mark = float(snapshot.mid or entry)
+        edge_now = float(snapshot.edge or 0.0)
+        spread_now = float(snapshot.spread or 0.0)
+        hours = self._hours_to_expiry(snapshot) or 0.0
+
+        pnl_per_contract = mark - entry
+        best_mark = float(row["best_mark_price"] or mark)
+
+        if pnl_per_contract >= 0.10:
+            return True, "take_profit_10c"
+
+        if pnl_per_contract <= -0.06:
+            return True, "stop_loss_6c"
+
+        if (best_mark - entry) >= 0.08 and pnl_per_contract <= 0.02:
+            return True, "profit_giveback"
+
+        if edge_now <= 0.0:
+            return True, "edge_gone"
+
+        if hours <= 0.33:
+            return True, "time_exit_20m"
+
+        if spread_now >= 0.12:
+            return True, "spread_blowout"
+
+        return False, None
+
+
+
+    def close_shadow_trade(self, row, snapshot, reason):
+        conn = get_conn()
+        try:
+            qty = int(_row_dict(row).get("qty", 0) or 0)
+            entry = float(_row_dict(row).get("entry_price", 0.0))
+
+            side = str(_row_dict(row).get("side") or "yes").lower()
+
+            # Realistic side-correct liquidation:
+            # YES positions exit on yes_bid, NO positions exit on no_bid.
+            bid_exit = getattr(snapshot, "no_bid", None) if side == "no" else getattr(snapshot, "yes_bid", None)
+            if bid_exit is None or float(bid_exit) <= 0:
+                return False
+
+            exit_price = float(bid_exit)
+            realized = (exit_price - entry) * qty
+            now = _utc_now()
+
+            conn.execute(
+                """
+                UPDATE shadow_trades
+                SET closed_at = ?, exit_price = ?, realized_pnl = ?, close_reason = ?
+                WHERE ticker = ? AND variant_name = ? AND closed_at IS NULL
+                """,
+                (
+                    now.isoformat(),
+                    exit_price,
+                    realized,
+                    reason,
+                    row["ticker"],
+                    row["variant_name"],
+                ),
+            )
+            conn.execute(
+                "DELETE FROM shadow_positions WHERE ticker = ? AND variant_name = ?",
+                (row["ticker"], row["variant_name"]),
+            )
+            conn.commit()
+            return True
+        finally:
+            conn.close()
+
+    def run_exit_pass(self):
+        conn = get_conn()
+        try:
+            rows = conn.execute("SELECT * FROM shadow_positions").fetchall()
+        finally:
+            conn.close()
+
+        for row in rows:
+            snapshot = self._market_store().get(row["ticker"])
+            if not snapshot:
+                continue
+            self.bot._enrich_with_fair_value(snapshot)
+            should_exit, reason = self._should_exit(row, snapshot)
+            if should_exit:
+                self.close_shadow_trade(row, snapshot, reason)
+                self.bot.log(
+                    f"Shadow trade closed: {row['variant_name']} {row['ticker']} reason={reason}"
+                )
+
+    def run_shadow_variants(self):
+        regime_name = getattr(self.bot, "current_regime", "conservative")
+
+        self.mark_positions()
+        self.run_exit_pass()
+
+        for ticker, snapshot in list(self._market_store().items()):
+            self.bot._enrich_with_fair_value(snapshot)
+
+            for variant_name in DEFAULT_VARIANTS:
+                ok, reason = self._passes_variant_rules(snapshot, variant_name)
+                self.log_candidate(variant_name, snapshot, ok, None if ok else reason, regime_name)
+
+                if not ok:
+                    continue
+
+                if self._already_open(snapshot.ticker, variant_name):
+                    continue
+
+                yes_ask = getattr(snapshot, "yes_ask", None)
+                if yes_ask is None:
+                    continue
+
+                qty, dollars = self._size_from_edge(variant_name, snapshot)
+
+                opened = self.open_shadow_trade(
+                    variant_name=variant_name,
+                    snapshot=snapshot,
+                    qty=qty,
+                    entry_price=float(yes_ask),
+                    regime_name=regime_name,
+                )
+                if opened:
+                    self.bot.log(
+                        f"Shadow trade opened: {variant_name} {snapshot.ticker} qty={qty} dollars={dollars:.2f} @ {yes_ask:.4f}"
+                    )
+
+        self.mark_positions()
+
+
+# --- sqlite row normalization helper ---
+def _row_dict(row):
+    if row is None:
+        return {}
+    if isinstance(row, dict):
+        return row
+    try:
+        return dict(row)
+    except Exception:
+        pass
+    try:
+        return {k: row[k] for k in row.keys()}
+    except Exception:
+        pass
+    return {}
+
+
+# --- dict/object field helper ---
+def _field(obj, name, default=None):
+    if obj is None:
+        return default
+    if isinstance(obj, dict):
+        return obj.get(name, default)
+    try:
+        return getattr(obj, name)
+    except Exception:
+        pass
+    try:
+        return obj[name]
+    except Exception:
+        return default
+

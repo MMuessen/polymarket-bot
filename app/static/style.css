@@ -1,0 +1,13 @@
+body { font-family: Arial, sans-serif; background: #f4f4f9; color: #333; padding: 20px; }
+h1 { color: #007bff; }
+h2 { color: #0056b3; }
+section { margin-bottom: 30px; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.indicator { font-weight: bold; font-size: 1.2em; }
+table { width: 100%; border-collapse: collapse; }
+th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+th { background: #007bff; color: white; }
+form { margin: 10px 0; }
+button { background: #007bff; color: white; border: none; padding: 5px 10px; cursor: pointer; }
+button:hover { background: #0056b3; }
+#stats { white-space: pre-wrap; font-size: 12px; background: #eee; padding: 10px; border-radius: 4px; }

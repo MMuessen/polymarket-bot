@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Architect Trading Control Center</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body{margin:0;background:#0b0e14;color:#e6edf3;font-family:Arial,sans-serif}
+    .wrap{padding:22px}
+    h1{margin:0 0 8px 0;font-size:26px}
+    .badge{display:inline-block;padding:6px 10px;border-radius:999px;background:#3a2a06;color:#ffd166;font-size:12px;font-weight:700}
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:20px}
+    .card{background:#111826;border-radius:12px;padding:18px;box-shadow:0 0 0 1px rgba(255,255,255,.05) inset}
+    .card h3{margin:0 0 14px 0;font-size:16px}
+    .row{display:flex;justify-content:space-between;gap:16px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+    .row:last-child{border-bottom:none}
+    .muted{color:#9fb0c3}
+    .good{color:#4ade80}.bad{color:#f87171}.warn{color:#fbbf24}
+    pre{white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.35;margin:0}
+    table{width:100%;border-collapse:collapse}
+    th,td{text-align:left;padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.06);font-size:14px;vertical-align:top}
+    .lane-micro{border-left:4px solid #38bdf8}
+    .lane-conviction{border-left:4px solid #a78bfa}
+    .pill{display:inline-block;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700}
+    .pill-micro{background:#0b3550;color:#7dd3fc}
+    .pill-conviction{background:#2e1f57;color:#c4b5fd}
+    .pill-blocked{background:#4a1717;color:#fca5a5}
+    .pill-allowed{background:#17371f;color:#86efac}
+    .small{font-size:12px}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+    @media (max-width: 1100px){.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Architect Trading Control Center</h1>
+  <div class="badge">Paper Trading Mode</div>
+  <div class="card" style="margin-top:16px">
+    <h3>Debug Exports</h3>
+    <div class="row"><span class="muted">Architect Gates</span><span><a href="/api/debug/architect-gates" target="_blank" style="color:#7dd3fc">Open JSON</a></span></div>
+    <div class="row"><span class="muted">Architect Backtest</span><span><a href="/api/debug/architect-backtest" target="_blank" style="color:#7dd3fc">Open JSON</a></span></div>
+    <div class="row"><span class="muted">Consultant Bundle</span><span><a href="/api/debug/consultant-bundle-v2" target="_blank" style="color:#7dd3fc">Open Text</a></span></div>
+    <div class="row"><span class="muted">Strategy Bundle v1</span><span><a href="/api/debug/strategy-bundle-v1" target="_blank" style="color:#7dd3fc">Open JSON</a></span></div>
+    <div class="row"><span class="muted">Strategy Bundle v2</span><span><a href="/api/debug/strategy-bundle-v2" target="_blank" style="color:#7dd3fc">Open JSON</a></span></div>
+  </div>
+
+  <div class="grid">
+    <div class="card lane-micro">
+      <h3>Lane 1 — Micro Edge</h3>
+      <div class="row"><span class="muted">Definition</span><span class="small">tight spread / smaller edge</span></div>
+      <div class="row"><span class="muted">Candidates</span><span id="micro_candidates">-</span></div>
+      <div class="row"><span class="muted">Allowed</span><span id="micro_allowed">-</span></div>
+      <div class="row"><span class="muted">Blocked</span><span id="micro_blocked">-</span></div>
+      <div class="row"><span class="muted">Trades loaded</span><span id="micro_trades">-</span></div>
+      <div class="row"><span class="muted">Wins</span><span id="micro_wins">-</span></div>
+      <div class="row"><span class="muted">Losses</span><span id="micro_losses">-</span></div>
+      <div class="row"><span class="muted">Win rate</span><span id="micro_winrate">-</span></div>
+      <div class="row"><span class="muted">Realized PnL</span><span id="micro_pnl">-</span></div>
+      <div class="row"><span class="muted">Open positions</span><span id="micro_open">-</span></div>
+    </div>
+
+    <div class="card lane-conviction">
+      <h3>Lane 2 — High Conviction</h3>
+      <div class="row"><span class="muted">Definition</span><span class="small">wider edge / slower signal</span></div>
+      <div class="row"><span class="muted">Candidates</span><span id="conv_candidates">-</span></div>
+      <div class="row"><span class="muted">Allowed</span><span id="conv_allowed">-</span></div>
+      <div class="row"><span class="muted">Blocked</span><span id="conv_blocked">-</span></div>
+      <div class="row"><span class="muted">Trades loaded</span><span id="conv_trades">-</span></div>
+      <div class="row"><span class="muted">Wins</span><span id="conv_wins">-</span></div>
+      <div class="row"><span class="muted">Losses</span><span id="conv_losses">-</span></div>
+      <div class="row"><span class="muted">Win rate</span><span id="conv_winrate">-</span></div>
+      <div class="row"><span class="muted">Realized PnL</span><span id="conv_pnl">-</span></div>
+      <div class="row"><span class="muted">Open positions</span><span id="conv_open">-</span></div>
+    </div>
+
+    <div class="card">
+      <h3>Global Engine</h3>
+      <div class="row"><span class="muted">Candidate calls</span><span id="candidate_calls">-</span></div>
+      <div class="row"><span class="muted">Allowed</span><span id="candidate_allowed">-</span></div>
+      <div class="row"><span class="muted">Blocked</span><span id="candidate_blocked">-</span></div>
+      <div class="row"><span class="muted">Enter attempts</span><span id="enter_calls">-</span></div>
+      <div class="row"><span class="muted">Enter allowed</span><span id="enter_allowed">-</span></div>
+      <div class="row"><span class="muted">Enter blocked</span><span id="enter_blocked">-</span></div>
+      <div class="row"><span class="muted">Blocked reasons</span><span id="blocked_reason_count">-</span></div>
+      <div class="row"><span class="muted">Open positions</span><span id="open_positions_total">-</span></div>
+      <div class="row"><span class="muted">Recent trades loaded</span><span id="recent_trades_total">-</span></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Lane Markouts</h3>
+      <table>
+        <thead><tr><th>Lane</th><th>Avg 1s bps</th><th>Avg 5s bps</th><th>Avg 10s bps</th></tr></thead>
+        <tbody id="markout_table"></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>Lane Exit Reasons</h3>
+      <pre id="exit_reason_box">{}</pre>
+    </div>
+
+    <div class="card">
+      <h3>Lane Leaderboard</h3>
+      <table>
+        <thead><tr><th>Variant</th><th>Lane</th><th>Status</th></tr></thead>
+        <tbody id="variant_lane_table"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Open Positions</h3>
+      <table>
+        <thead><tr><th>Ticker</th><th>Variant</th><th>Lane</th><th>Side</th><th>Entry</th></tr></thead>
+        <tbody id="positions"></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>Recent Trade Exits</h3>
+      <table>
+        <thead><tr><th>ID</th><th>Lane</th><th>Variant</th><th>Ticker</th><th>Reason</th><th>PnL</th></tr></thead>
+        <tbody id="recent_exits"></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>Blocked By Reason</h3>
+      <pre id="blocked_box">{}</pre>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Winners vs Losers</h3>
+      <table>
+        <thead><tr><th>Lane</th><th>Winners</th><th>Losers</th><th>Flat</th></tr></thead>
+        <tbody id="wl_table"></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>Guardrails / Variants</h3>
+      <pre id="variants_box">{}</pre>
+    </div>
+
+    <div class="card">
+      <h3>Lane Notes</h3>
+      <div class="row"><span class="muted">Micro edge rule</span><span class="small">spread ≤ 0.02 or entry ≤ 0.10</span></div>
+      <div class="row"><span class="muted">High conviction rule</span><span class="small">everything else</span></div>
+      <div class="row"><span class="muted">What matters next</span><span class="small">PnL + markouts by lane</span></div>
+      <div class="row"><span class="muted">Decision rule</span><span class="small">keep only the lane that improves</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+function esc(v){ return String(v ?? "") }
+function n(v,d=0){ return (v===null || v===undefined || v==="") ? d : v }
+function fmt(v){ return (typeof v === "number" && Number.isFinite(v)) ? v.toFixed(2) : String(v ?? "-") }
+
+function laneFromTrade(t){
+  const entry = Number(t.entry_price ?? 0)
+  const spread = Number(t.spread_at_entry ?? t.spread ?? 0)
+  if ((spread > 0 && spread <= 0.02) || (entry > 0 && entry <= 0.10)) return "micro"
+  return "conviction"
+}
+function laneFromSample(s){
+  const entry = Number(s.entry_price ?? s.ask ?? 0)
+  const spread = Number(s.spread ?? 0)
+  if ((spread > 0 && spread <= 0.02) || (entry > 0 && entry <= 0.10)) return "micro"
+  return "conviction"
+}
+function laneLabel(lane){
+  return lane === "micro"
+    ? '<span class="pill pill-micro">micro</span>'
+    : '<span class="pill pill-conviction">conviction</span>'
+}
+function pnlClass(v){
+  if (v > 0) return "good"
+  if (v < 0) return "bad"
+  return "muted"
+}
+function parseMeta(meta){
+  if (!meta) return {}
+  try { return JSON.parse(meta) } catch { return {} }
+}
+function summarizeTrades(trades, lane){
+  let wins=0, losses=0, flat=0, total=0, pnl=0
+  const mark1=[], mark5=[], mark10=[]
+  const reasons={}
+  for(const t of trades){
+    if (laneFromTrade(t) !== lane) continue
+    total++
+    const pnlVal = Number(t.realized_pnl ?? t.pnl ?? 0)
+    if (Number.isFinite(pnlVal)) pnl += pnlVal
+    if (pnlVal > 0) wins++
+    else if (pnlVal < 0) losses++
+    else flat++
+    const reason = String(t.close_reason ?? "open_or_unknown")
+    reasons[reason] = (reasons[reason] || 0) + 1
+    const meta = parseMeta(t.meta_json)
+    const m1 = Number(meta.markout_1s_bps)
+    const m5 = Number(meta.markout_5s_bps)
+    const m10 = Number(meta.markout_10s_bps)
+    if (Number.isFinite(m1)) mark1.push(m1)
+    if (Number.isFinite(m5)) mark5.push(m5)
+    if (Number.isFinite(m10)) mark10.push(m10)
+  }
+  const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null
+  return {
+    total, wins, losses, flat, pnl,
+    winRate: (wins+losses) ? ((wins/(wins+losses))*100).toFixed(1) + "%" : "n/a",
+    avg1: avg(mark1), avg5: avg(mark5), avg10: avg(mark10),
+    reasons
+  }
+}
+function countCandidates(samples, lane){
+  let candidates=0, allowed=0, blocked=0
+  for(const s of (samples || [])){
+    if (laneFromSample(s) !== lane) continue
+    candidates++
+    const reasons = Array.isArray(s.reasons) ? s.reasons : []
+    if (reasons.length === 0) allowed++
+    else blocked++
+  }
+  return { candidates, allowed, blocked }
+}
+
+async function load(){
+  const r = await fetch("/architect/data", { cache: "no-store" })
+  const d = await r.json()
+  const q = d.quant || {}
+  const trades = d.recent_trades || []
+  const open = d.open_positions || []
+  const samples = q.last_samples || []
+  const blocked = q.blocked_by_reason || {}
+  const g40 = d.paper_guardrails_v40 || {}
+  const g41 = d.paper_guardrails_v41 || {}
+
+  document.getElementById("candidate_calls").textContent = n(q.candidate_calls)
+  document.getElementById("candidate_allowed").textContent = n(q.candidate_allowed)
+  document.getElementById("candidate_blocked").textContent = n(q.candidate_blocked)
+  document.getElementById("enter_calls").textContent = n(q.enter_calls)
+  document.getElementById("enter_allowed").textContent = n(q.enter_allowed)
+  document.getElementById("enter_blocked").textContent = n(q.enter_blocked)
+  document.getElementById("blocked_reason_count").textContent = Object.keys(blocked).length
+  document.getElementById("open_positions_total").textContent = open.length
+  document.getElementById("recent_trades_total").textContent = trades.length
+
+  const microCand = countCandidates(samples, "micro")
+  const convCand = countCandidates(samples, "conviction")
+  const microTrades = summarizeTrades(trades, "micro")
+  const convTrades = summarizeTrades(trades, "conviction")
+
+  const microOpen = open.filter(x => laneFromTrade(x) === "micro").length
+  const convOpen = open.filter(x => laneFromTrade(x) === "conviction").length
+
+  document.getElementById("micro_candidates").textContent = microCand.candidates
+  document.getElementById("micro_allowed").textContent = microCand.allowed
+  document.getElementById("micro_blocked").textContent = microCand.blocked
+  document.getElementById("micro_trades").textContent = microTrades.total
+  document.getElementById("micro_wins").textContent = microTrades.wins
+  document.getElementById("micro_losses").textContent = microTrades.losses
+  document.getElementById("micro_winrate").textContent = microTrades.winRate
+  document.getElementById("micro_pnl").innerHTML = `<span class="${pnlClass(microTrades.pnl)} mono">${fmt(microTrades.pnl)}</span>`
+  document.getElementById("micro_open").textContent = microOpen
+
+  document.getElementById("conv_candidates").textContent = convCand.candidates
+  document.getElementById("conv_allowed").textContent = convCand.allowed
+  document.getElementById("conv_blocked").textContent = convCand.blocked
+  document.getElementById("conv_trades").textContent = convTrades.total
+  document.getElementById("conv_wins").textContent = convTrades.wins
+  document.getElementById("conv_losses").textContent = convTrades.losses
+  document.getElementById("conv_winrate").textContent = convTrades.winRate
+  document.getElementById("conv_pnl").innerHTML = `<span class="${pnlClass(convTrades.pnl)} mono">${fmt(convTrades.pnl)}</span>`
+  document.getElementById("conv_open").textContent = convOpen
+
+  document.getElementById("blocked_box").textContent = JSON.stringify(blocked, null, 2)
+  document.getElementById("variants_box").textContent = JSON.stringify({
+    allowed_variants: g41.allowed_variants || [],
+    blocked_variants: g41.blocked_variants || [],
+    v40_variant_blocks: g40.variant_blocks || {}
+  }, null, 2)
+
+  const markoutRows = [
+    `<tr><td>${laneLabel("micro")}</td><td>${microTrades.avg1===null?"n/a":fmt(microTrades.avg1)}</td><td>${microTrades.avg5===null?"n/a":fmt(microTrades.avg5)}</td><td>${microTrades.avg10===null?"n/a":fmt(microTrades.avg10)}</td></tr>`,
+    `<tr><td>${laneLabel("conviction")}</td><td>${convTrades.avg1===null?"n/a":fmt(convTrades.avg1)}</td><td>${convTrades.avg5===null?"n/a":fmt(convTrades.avg5)}</td><td>${convTrades.avg10===null?"n/a":fmt(convTrades.avg10)}</td></tr>`
+  ].join("")
+  document.getElementById("markout_table").innerHTML = markoutRows
+
+  document.getElementById("exit_reason_box").textContent = JSON.stringify({
+    micro: microTrades.reasons,
+    conviction: convTrades.reasons
+  }, null, 2)
+
+  const wlRows = [
+    `<tr><td>${laneLabel("micro")}</td><td>${microTrades.wins}</td><td>${microTrades.losses}</td><td>${microTrades.flat}</td></tr>`,
+    `<tr><td>${laneLabel("conviction")}</td><td>${convTrades.wins}</td><td>${convTrades.losses}</td><td>${convTrades.flat}</td></tr>`
+  ].join("")
+  document.getElementById("wl_table").innerHTML = wlRows
+
+  let variantRows = ""
+  const allowed = new Set((g41.allowed_variants || []).map(String))
+  const blockedVars = new Set((g41.blocked_variants || []).map(String))
+  const variants = new Set([
+    ...allowed,
+    ...blockedVars,
+    ...Object.keys((g40.variant_blocks || {}))
+  ])
+  for(const v of variants){
+    const lane = v.includes("aggressive") ? "micro" : "conviction"
+    const status = blockedVars.has(v)
+      ? '<span class="pill pill-blocked">blocked</span>'
+      : '<span class="pill pill-allowed">observe</span>'
+    variantRows += `<tr><td>${esc(v)}</td><td>${laneLabel(lane)}</td><td>${status}</td></tr>`
+  }
+  document.getElementById("variant_lane_table").innerHTML = variantRows || `<tr><td colspan="3" class="muted">No variants</td></tr>`
+
+  let pos = ""
+  for(const p of open){
+    const lane = laneFromTrade(p)
+    pos += `<tr><td>${esc(p.ticker)}</td><td>${esc(p.variant_name)}</td><td>${laneLabel(lane)}</td><td>${esc(p.side)}</td><td>${esc(p.entry_price)}</td></tr>`
+  }
+  document.getElementById("positions").innerHTML = pos || `<tr><td colspan="5" class="muted">No open positions</td></tr>`
+
+  let exits = ""
+  for(const t of trades.slice(0,20)){
+    const lane = laneFromTrade(t)
+    exits += `<tr>
+      <td>${esc(t.id)}</td>
+      <td>${laneLabel(lane)}</td>
+      <td>${esc(t.variant_name)}</td>
+      <td>${esc(t.ticker)}</td>
+      <td>${esc(t.close_reason ?? "")}</td>
+      <td class="${pnlClass(Number(t.realized_pnl ?? t.pnl ?? 0))}">${esc(t.realized_pnl ?? t.pnl ?? "")}</td>
+    </tr>`
+  }
+  document.getElementById("recent_exits").innerHTML = exits || `<tr><td colspan="6" class="muted">No recent exits</td></tr>`
+}
+setInterval(load, 2000)
+load()
+</script>
+</body>
+</html>

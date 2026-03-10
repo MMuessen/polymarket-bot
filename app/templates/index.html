@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kalshi Quant Desk</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root{
+      --bg:#06070b;
+      --panel:#0f172aee;
+      --panel-2:#0b1220ee;
+      --stroke:rgba(255,255,255,.08);
+      --muted:#94a3b8;
+      --good:#34d399;
+      --bad:#f87171;
+      --warn:#fbbf24;
+      --accent:#60a5fa;
+    }
+    html, body {
+      background:
+        radial-gradient(circle at top left, rgba(59,130,246,.14), transparent 28%),
+        radial-gradient(circle at top right, rgba(16,185,129,.10), transparent 24%),
+        linear-gradient(180deg, #04050a 0%, #06070b 100%);
+      min-height: 100%;
+    }
+    body {
+      color: #e5edf7;
+    }
+    .glass {
+      background: linear-gradient(180deg, rgba(17,24,39,.92), rgba(9,12,18,.94));
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.03),
+        0 18px 40px rgba(0,0,0,.35);
+      backdrop-filter: blur(16px);
+    }
+    .glass-soft {
+      background: linear-gradient(180deg, rgba(10,15,25,.84), rgba(7,10,16,.88));
+      border: 1px solid rgba(255,255,255,.06);
+      box-shadow: 0 12px 24px rgba(0,0,0,.22);
+    }
+    .mono {
+      font-variant-ligatures: none;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    .muted { color: var(--muted); }
+    .good { color: var(--good); }
+    .bad { color: var(--bad); }
+    .warn { color: var(--warn); }
+
+    .pill {
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.04);
+      border-radius: 999px;
+      padding: .28rem .65rem;
+      font-size: .72rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .kpi-card {
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi-card::after {
+      content: "";
+      position: absolute;
+      inset: auto -20% -60% auto;
+      width: 180px;
+      height: 180px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(96,165,250,.18), transparent 60%);
+      pointer-events: none;
+    }
+
+    .section-title {
+      font-size: 0.95rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: #8fa5c7;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border-radius: 1rem;
+      border: 1px solid rgba(255,255,255,.06);
+      background: rgba(2,6,23,.45);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .10em;
+      color: #8da2bf;
+      background: rgba(255,255,255,.02);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    td, th {
+      padding: .85rem .8rem;
+      border-bottom: 1px solid rgba(255,255,255,.05);
+      white-space: nowrap;
+    }
+
+    tr:hover td {
+      background: rgba(255,255,255,.025);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      border-radius: 999px;
+      padding: .28rem .62rem;
+      font-size: .72rem;
+      font-weight: 700;
+      border: 1px solid rgba(255,255,255,.08);
+    }
+
+    .badge-green { background: rgba(16,185,129,.12); color: #86efac; }
+    .badge-red { background: rgba(239,68,68,.12); color: #fca5a5; }
+    .badge-yellow { background: rgba(245,158,11,.12); color: #fcd34d; }
+    .badge-blue { background: rgba(59,130,246,.12); color: #93c5fd; }
+    .badge-gray { background: rgba(148,163,184,.12); color: #cbd5e1; }
+
+    .btn {
+      border-radius: 1rem;
+      padding: .82rem 1rem;
+      font-weight: 700;
+      transition: all .18s ease;
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .btn:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.06);
+    }
+
+    .input {
+      width: 100%;
+      border-radius: .9rem;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(2,6,23,.7);
+      color: #e5edf7;
+      padding: .72rem .85rem;
+      font-size: .92rem;
+      outline: none;
+    }
+    .input:focus {
+      border-color: rgba(96,165,250,.55);
+      box-shadow: 0 0 0 3px rgba(96,165,250,.14);
+    }
+
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .sticky-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      backdrop-filter: blur(14px);
+      background: linear-gradient(180deg, rgba(4,7,12,.84), rgba(4,7,12,.56));
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+
+    .subtle-grid {
+      background-image:
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+  </style>
+</head>
+
+<body class="subtle-grid">
+  <div class="sticky-topbar">
+    <div class="max-w-[1850px] mx-auto px-4 py-4">
+      <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div class="min-w-0">
+          <div class="flex items-center gap-3 flex-wrap">
+            <div class="pill">Operator Console</div>
+            <div class="pill">Shadow Lab</div>
+            <div class="pill">Live Market Feed</div>
+          </div>
+          <div class="mt-3 flex items-end gap-4 flex-wrap">
+            <div>
+              <div class="text-3xl md:text-4xl font-semibold tracking-tight">Kalshi Quant Desk</div>
+              <div class="text-sm text-slate-400 mt-1">Institutional-grade visibility for paper, shadow, and live execution control.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-3 flex flex-wrap gap-2">
+            <button onclick="downloadDebugReport()" class="btn bg-indigo-700 hover:bg-indigo-600 text-white">
+            Download Debug Report
+          </button>
+            <button onclick="downloadFullDebugReport()" class="rounded-xl px-4 py-2 bg-fuchsia-700 hover:bg-fuchsia-600 font-semibold text-sm">
+              Download Full Debug
+            </button>
+          </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="max-w-[1850px] mx-auto px-4 py-5">
+    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-5">
+      <div class="glass rounded-2xl p-4 kpi-card">
+        <div class="section-title">Mode</div>
+        <div id="modeBadge" class="mt-3 text-2xl font-bold">-</div>
+        <div class="text-xs muted mt-1">Execution environment</div>
+      </div>
+
+      <div class="glass rounded-2xl p-4 kpi-card">
+        <div class="section-title">Live Arm</div>
+        <div id="armBadge" class="mt-3 text-2xl font-bold">-</div>
+        <div class="text-xs muted mt-1">Real order safety gate</div>
+      </div>
+
+      <div class="glass rounded-2xl p-4 kpi-card">
+        <div class="section-title">Real Cash</div>
+        <div id="cashCard" class="mt-3 text-2xl font-bold mono">$0.00</div>
+        <div class="text-xs muted mt-1">Available balance</div>
+      </div>
+
+      <div class="glass rounded-2xl p-4 kpi-card">
+        <div class="section-title">Portfolio</div>
+        <div id="portfolioCard" class="mt-3 text-2xl font-bold mono">$0.00</div>
+        <div class="text-xs muted mt-1">Live marked value</div>
+      </div>
+
+      <div class="glass rounded-2xl p-4 kpi-card">
+        <div class="section-title">Paper Equity</div>
+        <div id="paperEquityCard" class="mt-3 text-2xl font-bold mono">$0.00</div>
+        <div class="text-xs muted mt-1">Simulated account equity</div>
+      </div>
+
+      <div class="glass rounded-2xl p-4 kpi-card">
+        <div class="section-title">Top Edge</div>
+        <div id="edgeCard" class="mt-3 text-2xl font-bold mono">0.00%</div>
+        <div class="text-xs muted mt-1">Highest current model edge</div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 2xl:grid-cols-12 gap-5">
+      <!-- LEFT -->
+      <div class="2xl:col-span-3 space-y-5">
+        <div class="glass rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div class="text-lg font-semibold">Execution Controls</div>
+            <div class="pill">Safety First</div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <button onclick="setMode('paper')" class="btn bg-cyan-700 hover:bg-cyan-600 text-white">Paper</button>
+            <button onclick="setMode('live')" class="btn bg-rose-700 hover:bg-rose-600 text-white">Live</button>
+            <button onclick="setArm(true)" class="btn bg-amber-600 hover:bg-amber-500 text-white">Arm Live</button>
+            <button onclick="setArm(false)" class="btn bg-slate-700 hover:bg-slate-600 text-white">Disarm</button>
+          </div>
+
+          <div id="actionToast" class="text-xs muted mt-4">Ready.</div>
+        </div>
+
+        <div class="glass rounded-2xl p-5">
+          <div class="text-lg font-semibold mb-4">Connection + Risk</div>
+          <div class="space-y-3 text-sm">
+            <div class="flex justify-between gap-3"><span class="muted">Kalshi Base</span><span id="kalshiBase" class="mono text-right break-all"></span></div>
+            <div class="flex justify-between gap-3"><span class="muted">Key Loaded</span><span id="keyLoaded"></span></div>
+            <div class="flex justify-between gap-3"><span class="muted">Private Key</span><span id="privLoaded"></span></div>
+            <div class="flex justify-between gap-3"><span class="muted">Trading Ready</span><span id="tradeReady"></span></div>
+            <div class="flex justify-between gap-3"><span class="muted">WS Status</span><span id="wsStatus"></span></div>
+          </div>
+        </div>
+
+        <div class="glass rounded-2xl p-5">
+          <div class="text-lg font-semibold mb-4">Spot Tape</div>
+          <div class="grid grid-cols-1 gap-3">
+            <div class="glass-soft rounded-xl p-4 flex justify-between items-center"><span class="muted">BTC</span><span id="spotBTC" class="mono text-lg">$0.00</span></div>
+            <div class="glass-soft rounded-xl p-4 flex justify-between items-center"><span class="muted">ETH</span><span id="spotETH" class="mono text-lg">$0.00</span></div>
+            <div class="glass-soft rounded-xl p-4 flex justify-between items-center"><span class="muted">SOL</span><span id="spotSOL" class="mono text-lg">$0.00</span></div>
+          </div>
+        </div>
+
+        <div class="glass rounded-2xl p-5">
+          <div class="text-lg font-semibold mb-4">Paper Book</div>
+          <div class="grid grid-cols-2 gap-3 mb-4">
+            <div class="glass-soft rounded-xl p-3">
+              <div class="text-xs text-slate-400 uppercase">Starting</div>
+              <div id="paperStart" class="mono text-lg mt-1">$0.00</div>
+            </div>
+            <div class="glass-soft rounded-xl p-3">
+              <div class="text-xs text-slate-400 uppercase">Cash</div>
+              <div id="paperCash" class="mono text-lg mt-1">$0.00</div>
+            </div>
+            <div class="glass-soft rounded-xl p-3">
+              <div class="text-xs text-slate-400 uppercase">Market Value</div>
+              <div id="paperMarketValue" class="mono text-lg mt-1">$0.00</div>
+            </div>
+            <div class="glass-soft rounded-xl p-3">
+              <div class="text-xs text-slate-400 uppercase">Positions</div>
+              <div id="paperPositions" class="mono text-lg mt-1">0</div>
+            </div>
+          </div>
+          <pre id="paperBox" class="glass-soft rounded-xl p-4 text-xs text-emerald-300 mono h-52 overflow-auto"></pre>
+        </div>
+
+        <div class="glass rounded-2xl p-5">
+          <div class="text-lg font-semibold mb-4">Strategies</div>
+          <div id="strategyControls" class="space-y-3"></div>
+        </div>
+      </div>
+
+      <!-- CENTER -->
+      <div class="2xl:col-span-6 space-y-5">
+        <div class="glass rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <div class="text-lg font-semibold">Scanner</div>
+              <div class="text-sm muted">Best opportunities ranked by model edge</div>
+            </div>
+            <div class="pill">Live Ranking</div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th class="text-left">Ticker</th>
+                  <th class="text-left">Market</th>
+                  <th class="text-right">Bid</th>
+                  <th class="text-right">Ask</th>
+                  <th class="text-right">Mid</th>
+                  <th class="text-right">Fair</th>
+                  <th class="text-right">Edge</th>
+                  <th class="text-left">Rationale</th>
+                </tr>
+              </thead>
+              <tbody id="marketsTable"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="glass rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <div class="text-lg font-semibold">Orders + Fills</div>
+              <div class="text-sm muted">Paper, shadow, and live activity in one stream</div>
+            </div>
+            <div class="pill">Execution Ledger</div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th class="text-left">Time</th>
+                  <th class="text-left">Mode</th>
+                  <th class="text-left">Strategy</th>
+                  <th class="text-left">Ticker</th>
+                  <th class="text-left">Side</th>
+                  <th class="text-right">Qty</th>
+                  <th class="text-right">Requested</th>
+                  <th class="text-right">Fill</th>
+                  <th class="text-right">Edge</th>
+                  <th class="text-left">Status</th>
+                </tr>
+              </thead>
+              <tbody id="tradesTable"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="glass rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <div class="text-lg font-semibold">Recent Logs</div>
+              <div class="text-sm muted">Operational heartbeat and errors</div>
+            </div>
+            <div class="pill">Telemetry</div>
+          </div>
+          <pre id="logsBox" class="glass-soft rounded-xl p-4 text-xs text-fuchsia-300 mono h-[28rem] overflow-auto"></pre>
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="2xl:col-span-3 space-y-5">
+        <div class="glass rounded-2xl p-5">
+          <div class="text-lg font-semibold mb-4">Pipeline Health</div>
+          <div class="grid grid-cols-2 gap-3 mb-4">
+            <div class="glass-soft rounded-xl p-3"><div class="text-xs text-slate-400 uppercase">Raw</div><div id="pipeRaw" class="mono text-lg mt-1">0</div></div>
+            <div class="glass-soft rounded-xl p-3"><div class="text-xs text-slate-400 uppercase">Normalized</div><div id="pipeNorm" class="mono text-lg mt-1">0</div></div>
+            <div class="glass-soft rounded-xl p-3"><div class="text-xs text-slate-400 uppercase">Classified</div><div id="pipeClass" class="mono text-lg mt-1">0</div></div>
+            <div class="glass-soft rounded-xl p-3"><div class="text-xs text-slate-400 uppercase">Eligible</div><div id="pipeEligible" class="mono text-lg mt-1">0</div></div>
+            <div class="glass-soft rounded-xl p-3"><div class="text-xs text-slate-400 uppercase">Shadow Candidates</div><div id="pipeShadowCandidates" class="mono text-lg mt-1">0</div></div>
+            <div class="glass-soft rounded-xl p-3"><div class="text-xs text-slate-400 uppercase">Cached</div><div id="pipeCached" class="mono text-lg mt-1">0</div></div>
+          </div>
+          <pre id="pipelineBox" class="glass-soft rounded-xl p-4 text-xs text-amber-300 mono h-56 overflow-auto"></pre>
+        </div>
+
+        <div class="glass rounded-2xl p-5">
+          <div class="text-lg font-semibold mb-4">System Health</div>
+          <pre id="healthBox" class="glass-soft rounded-xl p-4 text-xs text-cyan-300 mono h-56 overflow-auto"></pre>
+        </div>
+
+        <div class="glass rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div class="text-lg font-semibold">Strategy Lab</div>
+            <div class="pill">Optimization</div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 mb-4">
+            <div class="glass-soft rounded-xl p-3">
+              <div class="text-xs text-slate-400 uppercase">Candidate Events</div>
+              <div id="slCandidateEvents" class="mono text-lg mt-1">0</div>
+            </div>
+            <div class="glass-soft rounded-xl p-3">
+              <div class="text-xs text-slate-400 uppercase">Shadow Positions</div>
+              <div id="slShadowPositions" class="mono text-lg mt-1">0</div>
+            </div>
+            <div class="glass-soft rounded-xl p-3 col-span-2">
+              <div class="text-xs text-slate-400 uppercase">Best Variant</div>
+              <div id="slBestVariant" class="mono text-sm mt-1">-</div>
+            </div>
+          </div>
+
+          <div class="glass-soft rounded-xl p-4 mb-4">
+            <div class="text-sm font-semibold mb-3">Manual Override</div>
+            <div class="grid grid-cols-1 gap-3">
+              <input id="slFormStrategy" class="input mono" value="crypto_lag" placeholder="strategy_name" />
+              <input id="slFormVariant" class="input mono" value="crypto_lag_aggressive" placeholder="variant_name" />
+              <input id="slFormParam" class="input mono" value="min_edge" placeholder="parameter_name" />
+              <input id="slFormValue" class="input mono" value="0.018" placeholder="value_text" />
+              <button onclick="saveStrategyLabSetting()" class="btn bg-indigo-700 hover:bg-indigo-600 text-white">
+                Save Override
+              </button>
+              <div id="slFormResult" class="text-xs muted">No action yet.</div>
+            </div>
+          </div>
+
+          <div class="space-y-4">
+            <div>
+              <div class="text-sm font-semibold mb-2">Summaries</div>
+              <pre id="slSummariesBox" class="glass-soft rounded-xl p-3 text-xs text-cyan-300 mono h-40 overflow-auto"></pre>
+            </div>
+            <div>
+              <div class="text-sm font-semibold mb-2">Suggestions</div>
+              <pre id="slSuggestionsBox" class="glass-soft rounded-xl p-3 text-xs text-emerald-300 mono h-40 overflow-auto"></pre>
+            </div>
+            <div>
+              <div class="text-sm font-semibold mb-2">Shadow Positions</div>
+              <pre id="slPositionsBox" class="glass-soft rounded-xl p-3 text-xs text-amber-300 mono h-40 overflow-auto"></pre>
+            </div>
+            <div>
+              <div class="text-sm font-semibold mb-2">Operator Settings</div>
+              <pre id="slSettingsBox" class="glass-soft rounded-xl p-3 text-xs text-fuchsia-300 mono h-40 overflow-auto"></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  
+    <div id="paperSessionPanel" class="glass rounded-2xl p-4 mt-4">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <div class="text-lg font-semibold">Paper Session Scorecard</div>
+          <div class="text-sm text-slate-400">Everything below is scoped to the current paper run since the last reset.</div>
+        </div>
+        <div id="psReadyBadge" class="rounded-full px-3 py-1 text-xs font-semibold bg-slate-700 text-slate-100">-</div>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3 mb-4 text-sm">
+        <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Enabled</div><div id="psEnabled" class="mono text-lg">-</div></div>
+        <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Can Trade</div><div id="psCanTrade" class="mono text-lg">-</div></div>
+        <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Reset At</div><div id="psResetAt" class="mono text-xs break-all">-</div></div>
+        <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Closed</div><div id="psClosedTrades" class="mono text-lg">0</div></div>
+        <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Open</div><div id="psOpenTrades" class="mono text-lg">0</div></div>
+        <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Win Rate</div><div id="psWinRate" class="mono text-lg">0.00%</div></div>
+        <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Realized PnL</div><div id="psRealizedPnl" class="mono text-lg">$0.00</div></div>
+        <div class="rounded-xl bg-slate-950/70 border border-white/5 p-3"><div class="text-slate-400 text-xs uppercase">Avg / Trade</div><div id="psAvgPnl" class="mono text-lg">$0.00</div></div>
+      </div>
+
+      <div class="grid grid-cols-1 xl:grid-cols-4 gap-4">
+        <div class="xl:col-span-1">
+          <div class="text-sm font-semibold mb-2">Readiness Notes</div>
+          <pre id="psReadinessBox" class="bg-slate-950/70 border border-white/5 rounded-xl p-3 overflow-auto text-xs text-fuchsia-300 mono h-48"></pre>
+        </div>
+        <div class="xl:col-span-1">
+          <div class="text-sm font-semibold mb-2">Close Reasons</div>
+          <pre id="psCloseReasonsBox" class="bg-slate-950/70 border border-white/5 rounded-xl p-3 overflow-auto text-xs text-emerald-300 mono h-48"></pre>
+        </div>
+        <div class="xl:col-span-1">
+          <div class="text-sm font-semibold mb-2">By Variant</div>
+          <pre id="psVariantBox" class="bg-slate-950/70 border border-white/5 rounded-xl p-3 overflow-auto text-xs text-cyan-300 mono h-48"></pre>
+        </div>
+        <div class="xl:col-span-1">
+          <div class="text-sm font-semibold mb-2">Recent Trades</div>
+          <pre id="psRecentBox" class="bg-slate-950/70 border border-white/5 rounded-xl p-3 overflow-auto text-xs text-amber-300 mono h-48"></pre>
+        </div>
+      </div>
+    </div>
+
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

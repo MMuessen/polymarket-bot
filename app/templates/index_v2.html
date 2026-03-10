@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kalshi Bot</title>
+  <style>
+    :root {
+      --bg:       #0d0f14;
+      --surface:  #161a22;
+      --surface2: #1e2330;
+      --border:   #2a3040;
+      --accent:   #3b82f6;
+      --accent2:  #6366f1;
+      --green:    #22c55e;
+      --red:      #ef4444;
+      --yellow:   #f59e0b;
+      --text:     #e2e8f0;
+      --muted:    #64748b;
+      --mono:     "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ---- Layout ---- */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .logo { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; color: var(--text); }
+    .logo span { color: var(--accent); }
+
+    .header-right { display: flex; align-items: center; gap: 20px; }
+
+    .btc-price {
+      font-family: var(--mono);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--muted);
+      display: inline-block;
+      margin-right: 6px;
+    }
+    .status-dot.ok   { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .status-dot.warn { background: var(--yellow); }
+    .status-dot.err  { background: var(--red); }
+
+    .refresh-info { color: var(--muted); font-size: 11px; }
+
+    main { padding: 20px 24px; max-width: 1600px; margin: 0 auto; }
+
+    /* ---- Equity bar ---- */
+    .equity-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .equity-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+    }
+
+    .equity-card .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .equity-card .value {
+      font-family: var(--mono);
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .equity-card .sub {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .pos  { color: var(--green); }
+    .neg  { color: var(--red); }
+    .neu  { color: var(--text); }
+
+    /* ---- Grid ---- */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
+    @media (max-width: 1100px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+    /* ---- Panel ---- */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .panel-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    .panel-badge {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 7px;
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--muted);
+    }
+
+    .panel-body { padding: 0; }
+
+    /* ---- Tables ---- */
+    table { width: 100%; border-collapse: collapse; }
+
+    th {
+      padding: 8px 12px;
+      text-align: left;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .mono { font-family: var(--mono); }
+
+    .pill {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .pill-yes  { background: rgba(59,130,246,0.15); color: #60a5fa; }
+    .pill-no   { background: rgba(99,102,241,0.15); color: #a5b4fc; }
+    .pill-win  { background: rgba(34,197,94,0.12);  color: var(--green); }
+    .pill-loss { background: rgba(239,68,68,0.12);  color: var(--red); }
+    .pill-open { background: rgba(245,158,11,0.12); color: var(--yellow); }
+
+    .edge-bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .edge-bar-fill {
+      height: 3px;
+      border-radius: 2px;
+      background: var(--accent);
+      min-width: 2px;
+    }
+
+    /* ---- Health row ---- */
+    .health-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px 16px;
+    }
+
+    .health-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-size: 11px;
+    }
+
+    /* ---- Empty state ---- */
+    .empty {
+      padding: 32px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    /* ---- Controls ---- */
+    .controls { display: flex; gap: 8px; align-items: center; }
+
+    .btn {
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .btn:hover { background: var(--border); border-color: var(--accent); }
+    .btn-danger { border-color: var(--red); color: var(--red); }
+    .btn-danger:hover { background: rgba(239,68,68,0.1); }
+
+    .toggle {
+      position: relative;
+      width: 36px; height: 20px;
+      display: inline-block;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; inset: 0;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .toggle-slider::before {
+      content: "";
+      position: absolute;
+      width: 14px; height: 14px;
+      background: var(--muted);
+      border-radius: 50%;
+      left: 2px; top: 2px;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .toggle input:checked + .toggle-slider { background: var(--accent); border-color: var(--accent); }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(16px); background: white; }
+
+    /* ---- Spinner ---- */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="logo">kalshi<span>bot</span></div>
+    <div id="mode-badge" class="pill pill-open">PAPER</div>
+  </div>
+  <div class="header-right">
+    <div class="btc-price" id="btc-price">BTC —</div>
+    <div>
+      <span class="status-dot" id="status-dot"></span>
+      <span id="status-text" style="font-size:12px;color:var(--muted)">connecting…</span>
+    </div>
+    <div class="refresh-info" id="refresh-info">—</div>
+  </div>
+</header>
+
+<main>
+
+  <!-- Equity bar -->
+  <div class="equity-bar" id="equity-bar">
+    <div class="equity-card">
+      <div class="label">Equity</div>
+      <div class="value neu" id="eq-equity">—</div>
+    </div>
+    <div class="equity-card">
+      <div class="label">Realized P&L</div>
+      <div class="value" id="eq-realized">—</div>
+    </div>
+    <div class="equity-card">
+      <div class="label">Unrealized P&L</div>
+      <div class="value" id="eq-unrealized">—</div>
+    </div>
+    <div class="equity-card">
+      <div class="label">Win Rate</div>
+      <div class="value" id="eq-winrate">—</div>
+      <div class="sub" id="eq-trades">—</div>
+    </div>
+    <div class="equity-card">
+      <div class="label">Top Edge</div>
+      <div class="value" id="eq-edge">—</div>
+    </div>
+    <div class="equity-card">
+      <div class="label">Open Positions</div>
+      <div class="value neu" id="eq-positions">—</div>
+    </div>
+    <div class="equity-card">
+      <div class="label">Markets</div>
+      <div class="value neu" id="eq-markets">—</div>
+    </div>
+  </div>
+
+  <!-- Positions + Recent Trades -->
+  <div class="grid-2">
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Open Positions</div>
+        <div class="panel-badge" id="pos-count">0</div>
+      </div>
+      <div class="panel-body">
+        <table id="positions-table">
+          <thead><tr>
+            <th>Ticker</th><th>Side</th><th>Qty</th>
+            <th>Entry</th><th>Mark</th><th>Unreal P&L</th>
+          </tr></thead>
+          <tbody id="positions-body">
+            <tr><td colspan="6" class="empty">No open positions</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Recent Trades</div>
+        <div class="panel-badge" id="trades-count">0</div>
+      </div>
+      <div class="panel-body">
+        <table id="trades-table">
+          <thead><tr>
+            <th>Ticker</th><th>Side</th><th>Entry</th>
+            <th>Exit</th><th>P&L</th><th>Outcome</th><th>Reason</th>
+          </tr></thead>
+          <tbody id="trades-body">
+            <tr><td colspan="7" class="empty">No trades yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Top Markets + Maker Queue -->
+  <div class="grid-2">
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Top Markets by Edge</div>
+        <div class="panel-badge" id="mkt-count">0</div>
+      </div>
+      <div class="panel-body">
+        <table id="markets-table">
+          <thead><tr>
+            <th>Ticker</th><th>Side</th><th>Edge</th>
+            <th>Spread</th><th>Hrs</th><th>Fair</th>
+          </tr></thead>
+          <tbody id="markets-body">
+            <tr><td colspan="6" class="empty">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Maker Queue</div>
+        <div class="panel-badge" id="queue-count">0</div>
+      </div>
+      <div class="panel-body">
+        <table id="queue-table">
+          <thead><tr>
+            <th>Ticker</th><th>Side</th><th>Target</th>
+            <th>Ask</th><th>Age</th>
+          </tr></thead>
+          <tbody id="queue-body">
+            <tr><td colspan="5" class="empty">No pending orders</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Health + Controls -->
+  <div class="grid-2">
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Health</div>
+      </div>
+      <div class="panel-body">
+        <div class="health-row" id="health-chips">
+          <div class="health-chip"><div class="spinner"></div> Loading…</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Paper Controls</div>
+      </div>
+      <div class="panel-body" style="padding:16px;">
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <span style="color:var(--text)">Paper Trading Engine</span>
+            <label class="toggle">
+              <input type="checkbox" id="engine-toggle" onchange="toggleEngine(this)" checked />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div style="border-top:1px solid var(--border);padding-top:14px;">
+            <button class="btn btn-danger" onclick="resetPaper()">Reset Paper Data</button>
+            <span style="color:var(--muted);font-size:11px;margin-left:10px;">Clears all trades &amp; positions</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<script>
+  const API = {
+    status:    '/api/status',
+    session:   '/api/paper-session',
+    controls:  '/api/paper-controls',
+    toggle:    '/api/paper-controls',
+    reset:     '/api/paper/reset',
+  };
+
+  let _lastCycle = null;
+
+  async function fetchJSON(url) {
+    const r = await fetch(url, { cache: 'no-store' });
+    if (!r.ok) throw new Error(`${url}: ${r.status}`);
+    return r.json();
+  }
+
+  function fmt(v, decimals=4) {
+    if (v === null || v === undefined) return '—';
+    return Number(v).toFixed(decimals);
+  }
+
+  function fmtPnl(v) {
+    if (v === null || v === undefined) return '—';
+    const n = Number(v);
+    const s = (n >= 0 ? '+' : '') + n.toFixed(4);
+    return `<span class="${n >= 0 ? 'pos' : 'neg'}">${s}</span>`;
+  }
+
+  function fmtPct(v) {
+    if (v === null || v === undefined) return '—';
+    return (Number(v) * 100).toFixed(1) + '%';
+  }
+
+  function pillSide(s) {
+    if (!s) return '—';
+    return `<span class="pill pill-${s.toLowerCase()}">${s.toUpperCase()}</span>`;
+  }
+
+  function pillOutcome(o) {
+    if (!o) return '<span class="pill pill-open">OPEN</span>';
+    const cls = o.toLowerCase() === 'win' ? 'pill-win' : 'pill-loss';
+    return `<span class="pill ${cls}">${o.toUpperCase()}</span>`;
+  }
+
+  function ticker_short(t) {
+    if (!t) return '—';
+    // KXBTC-26MAR10-B70500 → B70500 with tooltip
+    const parts = t.split('-');
+    const label = parts.slice(-1)[0] || t;
+    return `<span title="${t}" style="cursor:default">${label}</span>`;
+  }
+
+  // ---- Main refresh ----
+  async function refresh() {
+    try {
+      const [status, session] = await Promise.all([
+        fetchJSON(API.status),
+        fetchJSON(API.session),
+      ]);
+
+      renderHeader(status);
+      renderEquity(status, session);
+      renderPositions(session.open_positions || []);
+      renderTrades(session.recent_trades || []);
+      renderMarkets(status.markets || []);
+      renderQueue(status.maker_queue || {});
+      renderHealth(status.health || {}, status.stream || {});
+
+      const now = new Date();
+      document.getElementById('refresh-info').textContent =
+        'Updated ' + now.toLocaleTimeString();
+
+    } catch(e) {
+      document.getElementById('status-dot').className = 'status-dot err';
+      document.getElementById('status-text').textContent = 'error';
+      console.error(e);
+    }
+  }
+
+  function renderHeader(s) {
+    const spot = (s.spot_prices || {}).BTC;
+    if (spot) {
+      document.getElementById('btc-price').textContent =
+        'BTC $' + Number(spot).toLocaleString('en-US', {maximumFractionDigits:0});
+    }
+
+    const health = s.health || {};
+    const overall = health.overall || 'unknown';
+    const dot = document.getElementById('status-dot');
+    const txt = document.getElementById('status-text');
+    dot.className = 'status-dot' + (overall === 'ok' ? ' ok' : overall === 'degraded' ? ' warn' : ' err');
+    txt.textContent = `cycle ${s.cycle || '—'} · ${overall}`;
+  }
+
+  function renderEquity(s, session) {
+    const sess = session.session || {};
+    const eq   = sess.equity;
+    const rpnl = sess.realized_pnl;
+    const upnl = sess.unrealized_pnl;
+    const wr   = sess.win_rate;
+    const tot  = sess.total_trades;
+    const wins = sess.wins;
+    const edge = s.top_edge;
+    const open = (session.open_positions || []).length;
+    const mkts = s.market_count || 0;
+
+    document.getElementById('eq-equity').innerHTML =
+      eq !== undefined ? `<span class="${eq>=1000?'pos':'neg'}">$${Number(eq).toFixed(2)}</span>` : '—';
+    document.getElementById('eq-realized').innerHTML = fmtPnl(rpnl);
+    document.getElementById('eq-unrealized').innerHTML = fmtPnl(upnl);
+    document.getElementById('eq-winrate').innerHTML =
+      wr !== undefined ? `<span class="${wr>=0.5?'pos':'neg'}">${fmtPct(wr)}</span>` : '—';
+    document.getElementById('eq-trades').textContent =
+      `${wins||0}W / ${(tot||0)-(wins||0)}L of ${tot||0}`;
+    document.getElementById('eq-edge').innerHTML =
+      edge !== null && edge !== undefined
+        ? `<span class="${edge>0?'pos':'neg'}">${(edge*100).toFixed(2)}%</span>` : '—';
+    document.getElementById('eq-positions').textContent = open;
+    document.getElementById('eq-markets').textContent = mkts;
+  }
+
+  function renderPositions(positions) {
+    const body = document.getElementById('positions-body');
+    document.getElementById('pos-count').textContent = positions.length;
+    if (!positions.length) {
+      body.innerHTML = '<tr><td colspan="6" class="empty">No open positions</td></tr>';
+      return;
+    }
+    body.innerHTML = positions.map(p => {
+      const upnl = Number(p.unrealized_pnl || 0);
+      return `<tr>
+        <td>${ticker_short(p.ticker)}</td>
+        <td>${pillSide(p.side)}</td>
+        <td>${p.qty}</td>
+        <td>${fmt(p.entry_price)}</td>
+        <td>${fmt(p.last_mark_price)}</td>
+        <td>${fmtPnl(upnl)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderTrades(trades) {
+    const body = document.getElementById('trades-body');
+    document.getElementById('trades-count').textContent = trades.length;
+    const recent = trades.slice(0, 20);
+    if (!recent.length) {
+      body.innerHTML = '<tr><td colspan="7" class="empty">No trades yet</td></tr>';
+      return;
+    }
+    body.innerHTML = recent.map(t => `<tr>
+      <td>${ticker_short(t.ticker)}</td>
+      <td>${pillSide(t.side)}</td>
+      <td>${fmt(t.entry_price)}</td>
+      <td>${fmt(t.exit_price)}</td>
+      <td>${fmtPnl(t.realized_pnl)}</td>
+      <td>${pillOutcome(t.outcome)}</td>
+      <td style="color:var(--muted);font-size:11px">${t.close_reason||'—'}</td>
+    </tr>`).join('');
+  }
+
+  function renderMarkets(markets) {
+    const body = document.getElementById('markets-body');
+    const positive = markets.filter(m => (m.best_exec_edge||0) > 0).slice(0, 15);
+    document.getElementById('mkt-count').textContent = markets.length;
+
+    if (!positive.length) {
+      body.innerHTML = '<tr><td colspan="6" class="empty">No positive-edge markets</td></tr>';
+      return;
+    }
+
+    body.innerHTML = positive.map(m => {
+      const edge = m.best_exec_edge || 0;
+      const barW = Math.min(40, Math.max(2, edge * 400));
+      return `<tr>
+        <td>${ticker_short(m.ticker)}</td>
+        <td>${pillSide(m.best_side)}</td>
+        <td>
+          <div class="edge-bar">
+            <div class="edge-bar-fill" style="width:${barW}px"></div>
+            <span class="pos">${(edge*100).toFixed(2)}%</span>
+          </div>
+        </td>
+        <td>${fmt(m.spread,3)}</td>
+        <td>${m.hours_to_expiry !== null && m.hours_to_expiry !== undefined ? Number(m.hours_to_expiry).toFixed(2) : '—'}</td>
+        <td>${fmt(m.fair_yes,3)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderQueue(q) {
+    const body = document.getElementById('queue-body');
+    const orders = q.orders || [];
+    document.getElementById('queue-count').textContent = orders.length;
+
+    if (!orders.length) {
+      body.innerHTML = '<tr><td colspan="5" class="empty">No pending orders</td></tr>';
+      return;
+    }
+
+    body.innerHTML = orders.map(o => `<tr>
+      <td>${ticker_short(o.ticker)}</td>
+      <td>${pillSide(o.side)}</td>
+      <td>${fmt(o.target_price)}</td>
+      <td>${fmt(o.ask_at_queue)}</td>
+      <td style="color:var(--muted)">${o.age_seconds}s</td>
+    </tr>`).join('');
+  }
+
+  function renderHealth(health, stream) {
+    const chips = document.getElementById('health-chips');
+    const subs = health.subsystems || {};
+    const items = [];
+
+    // Overall
+    const overall = health.overall || 'unknown';
+    const cls = overall === 'ok' ? 'ok' : overall === 'degraded' ? 'warn' : 'err';
+    items.push({ label: 'overall', status: cls });
+
+    // Subsystems
+    Object.entries(subs).forEach(([name, h]) => {
+      const s = h.status || 'unknown';
+      const c = s === 'ok' ? 'ok' : s === 'degraded' ? 'warn' : 'err';
+      items.push({ label: name, status: c, detail: h.last_error });
+    });
+
+    // Streams
+    const cb = stream.coinbase || {};
+    items.push({ label: 'coinbase', status: cb.status === 'connected' ? 'ok' : 'warn' });
+    const ks = stream.kalshi || {};
+    items.push({ label: 'kalshi-stream', status: ks.status === 'live' ? 'ok' : 'warn' });
+
+    chips.innerHTML = items.map(i => `
+      <div class="health-chip" title="${i.detail||''}">
+        <span class="status-dot ${i.status}"></span>
+        <span>${i.label}</span>
+      </div>
+    `).join('');
+  }
+
+  // ---- Controls ----
+  async function toggleEngine(checkbox) {
+    try {
+      await fetch(API.toggle, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: checkbox.checked }),
+      });
+    } catch(e) { console.error(e); }
+  }
+
+  async function resetPaper() {
+    if (!confirm('Reset all paper trading data? This cannot be undone.')) return;
+    try {
+      const r = await fetch(API.reset, { method: 'POST' });
+      const d = await r.json();
+      if (d.ok) { alert('Paper data reset.'); refresh(); }
+    } catch(e) { alert('Error: ' + e); }
+  }
+
+  // ---- Auto-refresh ----
+  refresh();
+  setInterval(refresh, 10000);
+</script>
+</body>
+</html>

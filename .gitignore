@@ -1,0 +1,46 @@
+ollama_data/
+trading_session.log
+__pycache__/
+*.pyc
+.env
+# Runtime data
+data/
+*.db
+*.jsonl
+*.csv
+
+# Local configs
+.env
+bot_settings.json
+
+# Temp / backups
+actions-runner/
+backup_before_fix/
+app/main.py.*.bak
+*.bak
+tmp/
+docs/ai-state/*.tmp
+# local patch / backup junk
+app/debug_handoff.py*.bak
+app/static/app.js*.bak
+# local backup directories
+backup_*/
+backups/
+# accidental terminal artifact files
+0
+=
+CACHED
+[[]bot
+[[]bot]
+exporting
+naming
+transferring
+writing
+app/main.py.bak_*
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+improver/logs/
+*.pid
+app/strategy_lab/*.bak
+app/strategy_lab/*.bak.*

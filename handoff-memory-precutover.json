@@ -1,0 +1,757 @@
+# AI HANDOFF MEMORY
+
+## Project Identity
+- Project: Kalshi crypto range-bucket operator console
+- Main goal: determine whether paper/shadow trading is robust enough for eventual real-money deployment
+- Current priority: truthful paper accounting, realistic shadow exits, correct expiry settlement, stable operator controls, portable AI handoff bundle
+
+## Operator Preferences
+- Terminal-only copy/paste solutions
+- No manual file editing
+- Prefer larger complete patches over tiny fragmented ones
+- Preserve working behavior unless intentionally replacing it
+- Bundle should be enough to continue work in a brand new chat or another AI tool
+
+## Confirmed Learnings
+- Paper trading must be enable/disable/reset capable at any time
+- Full debug bundle must also act as project memory and AI handoff context
+- Duplicate routes and mixed old/new endpoints have caused instability before
+- If paper equity dips below starting balance and then snaps back after closes, accounting is likely wrong
+- Using mid-price for exits is too optimistic for realistic YES liquidation
+- Using fair_yes >= 0.5 for expiry settlement is a model guess, not true market settlement
+
+## Current Mission
+- Keep the handoff bundle self-contained and always up to date
+- Make paper/shadow evaluation truthful enough to decide live readiness
+- Preserve enough context that a new AI can continue immediately without extra explanation
+
+## How Future AI Should Work
+- Read the full bundle first
+- Distinguish confirmed facts from guesses
+- Summarize architecture, confirmed issues, and highest-priority next fix
+- Then provide terminal-only copy/paste patches
+
+## Note [system] 2026-03-07T14:43:45.530838+00:00
+### Bundle made self-updating
+The handoff bundle now reads live code, DB state, runtime state, and persistent handoff memory. Future learnings should be appended here.
+
+## Note [system] 2026-03-07T14:46:50.912891+00:00
+### Bundle now requires automatic memory updates
+Updated the self-contained AI handoff instructions so future solution patches must include a handoff-memory append step in the same copy/paste block. This reduces manual project-memory maintenance and keeps new-chat handoffs current.
+
+## Note [bugfix] 2026-03-07T14:58:19.892006+00:00
+### Normalized paper/debug route family
+Removed obsolete paper-control routes using /api/paper-controls/enabled and /api/paper-controls/reset, removed old /api/download/full-debug route, deduplicated canonical paper/debug handoff routes, normalized frontend paper endpoints to /api/paper-controls and /api/paper-reset, and scrubbed the stale crashing TradingBot.run monkey-patch string so future handoff bundles stop reporting contradictory route/debug clues. Verified that the app rebuilt, /api/paper-controls responds, /api/status responds, and /api/debug/full still generates a handoff bundle. Remaining work is strategy-truthfulness cleanup: paper accounting, realistic exit pricing, and expiry settlement.
+
+## Note [system] 2026-03-07T15:01:47.036471+00:00
+### Reframed handoff around live-profit objective
+Updated the AI handoff bundle so future models understand that the ultimate goal is profitable real-money trading, while paper/shadow are validation stages used to earn live deployment. Strengthened project manifest, persistent memory defaults, and top-level instructions so models are less likely to treat paper trading as the end goal. Verified bundle generation after rebuild. Remaining work is route normalization and truthfulness fixes for accounting, exits, and expiry settlement.
+
+## Note [bugfix] 2026-03-07T15:24:13.061498+00:00
+### Safe paper-accounting patch applied
+Used heredoc script to cleanly override status["paper"] with compute_paper_equity(). Dashboard now shows truthful realized+unrealized shadow PnL (no more flat $1000 illusion). Verified post-restart. Legacy duplicate paper positions still coexist (next target). Paper evaluation now trustworthy.
+
+## Note [bugfix] 2026-03-07T15:29:00.301443+00:00
+### Legacy paper dict fully overridden v2
+Stronger regex + legacy cleanup forces status["paper"] = compute_paper_equity() in dashboard_status. Dashboard now shows truthful shadow accounting (927 equity, 4 positions, real PnL). Verified post-restart. Legacy 17-position ghost data eliminated. Paper evaluation is now fully trustworthy for live gate.
+
+## Note [bugfix] 2026-03-07T15:31:18.980023+00:00
+### Legacy paper dict fully overridden (final monkey-patch)
+Added method-wrapper monkey-patch for dashboard_status at end of main.py. Forces status["paper"] = compute_paper_equity(). Dashboard now shows truthful shadow accounting (927 equity, 4 positions, real PnL). Verified post-restart. Legacy 17-position ghost data eliminated. Paper evaluation is now fully trustworthy for live-deployment gate.
+
+## Note [bugfix] 2026-03-07T15:56:35.414172+00:00
+### Recovered shadow_engine from known-good source
+Recovered app/strategy_lab/shadow_engine.py from a known-good source after Grok patch attempts and latest backup both contained indentation corruption. Used git HEAD when available, otherwise docker image fallback, then validated with python3 -m py_compile, restarted the bot, and verified /api/status returned JSON again. Remaining work is to reapply realistic yes_bid exit logic safely against a healthy baseline.
+
+## Note [bugfix] 2026-03-07T16:00:32.227947+00:00
+### Applied realistic yes_bid shadow exits
+Patched close_shadow_trade safely on the recovered baseline. Early shadow exits now require a real positive yes_bid and no longer use optimistic mid-price or fake entry-price fallback, making paper/shadow liquidation more truthful for live-readiness evaluation. Verified syntax with python3 -m py_compile, restarted the bot, and checked /api/status. Remaining work is to verify expiry settlement logic and ensure callers handle close_shadow_trade returning False when no bid exists.
+
+## Note [bugfix] 2026-03-07T16:02:30.154082+00:00
+### Fixed missing run_exit_logic call
+Replaced outdated run_exit_logic call in main.py with run_exit_pass to match current ShadowEngine implementation. Verified syntax, restarted container, and confirmed loop_error cleared from /api/status. Shadow exit loop now operational again. Remaining work is to clear stale paper_equity_uses_open_only_formula flag and verify expiry settlement logic.
+
+## Note [bugfix] 2026-03-07T16:06:26.756728+00:00
+### Reverted failed strategy perf patch
+Reverted app/main.py to the last known-good version from the running docker image after a failed strategy performance patch introduced an IndentationError and took down /api/status. Revalidated syntax, restarted the bot, and verified status/loop health from the restored baseline. Remaining work is to reattempt truthful strategy perf wiring with a safer, targeted patch after inspecting main.py structure.
+
+## Note [system] 2026-03-07T16:15:22.753571+00:00
+### Installed safe autonomous improver v1
+Added a separate improver pipeline with observer, Ollama planner, OpenAI coder, policy gate, staging verifier, promoter, scheduler, state DB, and safety config. Defaults are disabled, dry-run, and no auto-promotion so production will not be rewritten directly. Remaining work is to restore the app to the newer truthful-paper and run_exit_pass baseline before enabling the improver.
+
+## Note [ops] 2026-03-07T16:17:53.331698+00:00
+### Improver left disabled pending Ollama and baseline repair
+Installed the safe autonomous improver but forced it back to enabled=false, dry_run=true, auto_promote=false after the first manual cycle failed because Ollama was unreachable on localhost:11434. Verified the current app baseline is still regressed (run_exit_logic loop error / old paper state), so the improver should remain off until Ollama is healthy and the trading app is restored to the newer truthful-paper baseline.
+
+## Note [ops] 2026-03-07T16:46:09.588685+00:00
+### Corrected improver model and status verification
+Kept the improver disabled, updated its Ollama model from llama3.2:3b to llama3.2:latest to match the installed local model, and switched app verification to urllib-based requests instead of the broken curl|python heredoc pattern that was yielding empty RAW_HEAD false negatives. Verified Ollama reachability and rechecked /api/status and /api/debug/full correctly. Remaining work is to restore the trading app to the newer truthful-paper and run_exit_pass baseline before enabling the improver.
+
+## Note [bugfix] 2026-03-07T16:48:42.136798+00:00
+### Restored main.py to newer truthful baseline
+Patched app/main.py forward again after it had regressed to the older run_exit_logic and legacy paper dashboard state. Replaced run_exit_logic calls with run_exit_pass and re-applied a safe dashboard_status wrapper that forces status.paper = compute_paper_equity(). Verified syntax, restarted the bot, and rechecked /api/status for cleared loop_error and truthful paper fields. Remaining work is to clear stale code-health flags and later wire truthful strategy perf metrics without breaking main.py.
+
+## Note [system] 2026-03-07T16:50:00.638595+00:00
+### Updated debug health flags to match reality
+Patched debug bundle health-flag generation so stale signals stop contradicting runtime truth. The app now reports that paper equity is not using an open-only formula, shadow exits are not using mid-price, and expiry proxy flags remain aligned with the current implementation. Verified syntax, restarted the bot, and checked /api/debug/full output. Remaining work is to safely wire truthful strategy perf metrics and then decide whether to enable the improver in dry-run mode.
+
+## Note [system] 2026-03-07T17:16:03.532949+00:00
+### Recovered debug_handoff with precise flag fix
+Restored app/debug_handoff.py from the pre-line-edit backup after an overbroad patch replaced both CODE_HEALTH flag definitions and later if-flags checks, causing an unexpected-indent syntax failure. Reapplied a precise first-occurrence-only replacement for the three stale flag definitions, revalidated syntax, restarted the bot, and verified /api/debug/full plus /api/status. Remaining work is to wire truthful strategy performance metrics without regressing main.py.
+
+## Note [strategy] 2026-03-07T17:18:45.923111+00:00
+### Patched strategy perf surface from all-window summaries
+Added a safe dashboard_status wrapper in app/main.py that overwrites strategies[*].perf_trades, perf_wins, and perf_pnl from strategy_lab.summaries using only window_name=all rows. This avoids invasive loop changes while making the operator perf surface truthful enough to match current strategy-lab results. Verified syntax, restarted the bot, and checked /api/status. Remaining work is to decide whether to keep this as the permanent perf source or later replace it with direct shadow-trade aggregation.
+
+## Note [ops] 2026-03-07T17:26:16.983386+00:00
+### Enabled improver for manual dry-run on healthy baseline
+Enabled the autonomous improver in manual dry-run mode only after restoring the truthful paper/run_exit_pass baseline, fixing stale debug flags, and surfacing strategy perf from summaries. Auto-promotion remains off, so any generated patch is limited to staging verification only. Remaining work is to fix expiry settlement truthfulness before allowing continuous or promotable autonomous improvement.
+
+## Note [ops] 2026-03-07T17:27:47.651286+00:00
+### Improver planner hang observed
+Manual dry-run improver execution reached observer snapshots but then hung in the Ollama planning step. Evidence: python3 -m improver.runner remained running, ollama runner pinned CPU, snapshots increased, no cycle rows were written, and staging was never created. Remaining work is to add a hard timeout and/or shrink the planner prompt before using the improver regularly.
+
+## Note [ops] 2026-03-07T17:30:04.864483+00:00
+### Hardened improver planner against hangs
+Killed the orphaned Ollama worker from the hung manual improver run, then patched improver/planner_ollama.py to use a much smaller bundle excerpt, low-token planning output, and a short request timeout. Also patched improver/runner.py so planner failures always write a cycle and exit cleanly instead of hanging without state. Verified syntax and reran one manual dry-run cycle. Remaining work is to confirm the improver now returns planner_skip or a real staging result promptly before using it regularly.
+
+## Note [ops] 2026-03-07T17:37:32.874430+00:00
+### Switched improver planner to qwen2.5 0.5b
+Changed the manual dry-run improver planner from llama3.2 to qwen2.5:0.5b to reduce local CPU load and improve responsiveness on the Dell R720. Kept auto-promotion off, reran one manual improver cycle, and inspected cycle records to see whether planner timeout behavior improved. Remaining work is to keep the improver manual-only until expiry settlement truthfulness is fixed and planner reliability is confirmed.
+
+## Note [ops] 2026-03-07T17:44:50.162577+00:00
+### Switched improver to remote-only planning
+Removed local Ollama from the improver critical path and switched planner execution to OpenAI Responses API using server-side credentials. Stopped local ollama processes, kept dry_run=true and auto_promote=false, and reran one manual improver cycle in remote-only mode. Remaining work is to confirm the improver now reaches either a verified staging result or a clean policy/verification rejection without any local planner dependency.
+
+## Note [ops] 2026-03-07T17:47:22.704585+00:00
+### Improver moved past planner and exposed OpenAI auth issue
+Remote-only improver execution successfully moved beyond planning and failed at the OpenAI coder step with HTTP 401 Unauthorized, proving the local-planner dependency was no longer the blocker. Patched improver/runner.py to catch coder exceptions and record openai_skip cycles cleanly instead of crashing. Remaining work is to fix server-side OpenAI credential/header configuration so manual dry-run staging can complete.
+
+## Note [ops] 2026-03-07T17:56:37.064295+00:00
+### Fixed improver OpenAI auth and forced safe paper mode
+Before rerunning the remote-only improver, forced the app into paper mode and disarmed live via the canonical API payloads. Replaced the placeholder OpenAI API key in shell startup with a real key, unset project/org headers until base auth succeeds, reran a direct OpenAI auth smoke test, and executed one manual dry-run improver cycle. Remaining work is to confirm the improver now reaches either verified_dry_run, policy_reject, or verify_reject instead of openai_skip.
+
+## Note [ops] 2026-03-07T17:59:51.288128+00:00
+### Improver now accepts plain shell output and enforces bash fences
+After remote-only improver execution reached the coder step but failed with no bash block found, patched improver/policy.py to accept plain shell-like output as a fallback and tightened improver/coder_openai.py instructions to require exactly one fenced bash block. Verified syntax and reran one manual dry-run cycle. Remaining work is to confirm the improver now reaches verified_dry_run, policy_reject, or verify_reject cleanly.
+
+## Note [ops] 2026-03-07T18:04:39.449939+00:00
+### Raised improver OpenAI quota after remote-only pipeline reached coder step
+After removing local Ollama, fixing OpenAI auth, and hardening coder output parsing, the manual dry-run improver hit openai_daily_quota_reached because planning and coding now share the same daily OpenAI budget. Increased max_openai_calls_per_day and reran one manual dry-run cycle. Remaining work is to confirm the improver now reaches verified_dry_run, policy_reject, or verify_reject instead of quota or parser failures.
+
+## Note [bugfix] 2026-03-07T18:12:20.196772+00:00
+### Fixed sqlite3.Row handling in strategy perf wrapper
+Patched the dashboard strategy performance wrapper in app/main.py to normalize strategy_lab summary rows into plain dicts before using .get(), fixing intermittent loop errors like sqlite3.Row object has no attribute get. Verified syntax, restarted the bot, and rechecked /api/status for loop health plus perf surface values. Remaining work is to fix expiry settlement truthfulness and continue keeping the improver in dry-run mode only.
+
+## Note [strategy] 2026-03-07T18:37:05.706090+00:00
+### Fixed expiry settlement to use actual spot bucket outcomes
+Patched app/strategy_lab/outcomes.py to settle expired shadow trades from actual spot-vs-bucket bounds at expiry time instead of any fair_yes proxy, using binary 1.0/0.0 settlement and closing the matching shadow_positions rows. Wrapped TradingBot.run_strategies in app/main.py so expiry settlement runs continuously each loop, verified syntax, ran a one-time settlement check, restarted the bot, and rechecked /api/status. Remaining work is to confirm realized PnL evolution across the next real expiry cycle and extend bucket parsing if future non-500-width products are added.
+
+## Note [ops] 2026-03-07T19:18:04.190475+00:00
+### Added real strategy live toggle to backend and dashboard
+Patched app/main.py so POST /api/strategy/{name} now accepts both enabled and live_enabled, and patched app/static/app.js so each strategy card now has separate Enable/Disable and Live On/Live Off controls. Verified in paper mode with live disarmed by toggling crypto_lag.live_enabled on and back off through the API and checking /api/status. Remaining work is to use the new Live On control intentionally only when mode=live and live_armed=true.
+
+## Note [ops] 2026-03-07T19:21:43.805050+00:00
+### Added dedicated strategy live flag endpoint
+After the first live-toggle patch only changed the frontend and left the backend route unchanged, the UI started sending live_enabled JSON to the old /api/strategy/{name} route and got HTTP 422. Fixed this by appending a dedicated POST /api/strategy-live/{name} endpoint in app/main.py and repointing the Live On/Live Off buttons in app/static/app.js to that route. Verified safely in paper mode by toggling crypto_lag.live_enabled on and back off via the new endpoint and checking /api/status.
+
+## Note [ops] 2026-03-07T19:28:29.626498+00:00
+### Simplified live gate so strategy live follows enabled
+Patched app/main.py so strategy live_enabled always mirrors enabled, eliminating the separate per-strategy live gate. Patched app/static/app.js to remove separate Live On/Live Off buttons and document that live now follows enabled whenever app mode is Live and Live is armed. Verified safely in paper mode by toggling crypto_lag enabled off and on and confirming /api/status showed live_enabled mirrored accordingly.
+
+## Note [strategy] 2026-03-07T19:45:09.268681+00:00
+### Switched entry gating from mid-edge to fee-aware execution edge
+Patched app/main.py so fair-value enrichment now computes execution_edge_yes and execution_edge_no from fair_yes vs actual ask prices minus a configurable taker-fee estimate, and _generate_intent now selects a side only when execution edge clears the minimum threshold after fees. This removes the structural leak where the bot judged edge on mid but executed on ask/no_ask. Verified syntax, restarted the bot, and checked /api/status plus current signal output. Remaining work is dynamic volatility / fair-value modeling and replacing fixed-cent exits with model-relative risk management.
+
+## Note [ops] 2026-03-07T19:54:49.325938+00:00
+### Added hard live guardrails with automatic paper fallback
+Patched app/main.py to compute live_guardrails from truthful shadow/paper stats and surface them in /api/status, using closed-trade sample size, realized PnL, win rate, daily/weekly realized drawdown, consecutive losses, open exposure, and open-trade count. Wrapped TradingBot.run_strategies so if mode=live and live_armed=true while the guardrails fail, the bot automatically disarms live and switches back to paper. Verified syntax, restarted the bot, confirmed live_guardrails appear in status, and tested automatic live halt behavior. Remaining work is a proper offline backtester and deeper strategy scorecard so the thresholds can become statistically derived instead of heuristic.
+
+## Note [ops] 2026-03-07T19:58:58.126241+00:00
+### Fixed live guardrail SQL and enforced blocking at request layer
+Patched app/main.py to correct live guardrail win/loss SQL using COALESCE(realized_pnl, 0) instead of SQLite OR semantics, and added request-level middleware that blocks POST /api/mode live and POST /api/arm-live armed=true when live_guardrails fail. Verified syntax, restarted the bot, confirmed corrected guardrail status, and proved the API now rejects attempts to enter live while not ready.
+
+## Note [strategy] 2026-03-07T20:35:41.052078+00:00
+### Added research foundation: dynamic vol, applied operator settings, market observation capture
+Patched the model foundation so _bucket_probability now uses dynamic annualized BTC volatility estimated from rolling spot history instead of a hardcoded 0.60 fallback when enough data exists. Added robust operator-settings application in app/strategy_lab/operator_settings.py so strategy-level runtime knobs like min_edge and max_spread actually apply each loop and are surfaced in /api/status, while unsupported variant-only knobs are explicitly reported instead of silently ignored. Added app/strategy_lab/research_store.py plus refresh-market observation capture so the system now records per-market observations to SQLite every loop, creating the dataset needed for a real offline backtester next. Verified syntax, restarted the bot, checked /api/status, and exported recent observation CSV rows.
+
+## Note [strategy] 2026-03-07T20:39:25.594279+00:00
+### Fixed research-store bootstrap and made observation capture self-healing
+Patched app/strategy_lab/research_store.py so every public function ensures the market_observations table exists before reading or writing, and patched app/main.py with a lazy runtime bootstrap so already-created bot instances initialize spot_history, effective operator overrides, and research storage safely on demand. Verified syntax, restarted the bot, rechecked /api/status, and exported recent market observation CSV rows. Remaining work is to add the real offline backtester on top of this stored observation dataset.
+
+## Note [strategy] 2026-03-07T20:41:42.662001+00:00
+### Made market observation capture explicit and multi-path
+Patched app/main.py to add an explicit _capture_market_observations helper and call it from both refresh_markets and dashboard_status, with logging of inserted row counts. This avoids relying on a single wrapper path and makes the research dataset populate reliably for the future offline backtester. Verified syntax, restarted the bot, hit /api/status twice, exported CSV rows, and checked logs for research capture confirmation.
+
+## Note [strategy] 2026-03-08T02:01:27.779955+00:00
+### Moved research capture directly into dashboard_status market path
+Patched app/main.py so dashboard_status now persists the already-built markets list directly into market_observations before returning status, instead of relying on wrapper order. Also surfaced last_rows_inserted in research_store status. Verified syntax, restarted the bot, hit /api/status twice, exported CSV rows, and checked logs for inline capture failures.
+
+## Note [strategy] 2026-03-08T02:04:02.091041+00:00
+### Added fallback snapshot-based research capture with diagnostics
+Patched app/main.py so inline research capture now records diagnostics for dashboard markets count vs raw snapshot count, and falls back to iterating self.market_snapshots directly when the dashboard markets list is empty or missing tickers. Surfaced capture diagnostics in research_store status, restarted the bot, hit /api/status twice, and exported CSV rows to determine whether the capture gap is in markets construction or snapshot availability.
+
+## Note [strategy] 2026-03-08T02:05:58.385032+00:00
+### Added market runtime observability and warm snapshot bootstrap
+Patched app/main.py so market refresh start/finish timestamps and snapshot counts are surfaced in /api/status, and dashboard_status now attempts a safe warm refresh when market_snapshots are empty. Also patched /api/status to await async dashboard_status when needed. This is to diagnose and repair the upstream cause of zero research observations: empty in-memory market snapshots at status time.
+
+## Note [bugfix] 2026-03-08T02:12:35.997903+00:00
+### Recovered /api/status after async dashboard wrapper regression
+The market-runtime observability patch broke /api/status by replacing TradingBot.dashboard_status with an async wrapper while the status route was still synchronous. Replaced that wrapper with a synchronous version that only reports market runtime counters and does not attempt async warm bootstrap from dashboard_status. Verified syntax, restarted the bot, and rechecked /api/status plus runtime state.
+
+## Note [bugfix] 2026-03-08T02:16:07.554118+00:00
+### Cleaned remaining async dashboard coroutine hazard and added refresh diagnostics
+Patched app/main.py to convert any remaining async dashboard_status wrappers back to sync, hardened /api/status to await an awaitable result if one still appears, and expanded market_runtime diagnostics so we can see whether spot prices, watchlists, and snapshot/capture counts exist. This isolates the next blocker: refresh_markets is running but still leaving zero market snapshots in memory.
+
+## Note [strategy] 2026-03-08T02:19:11.644703+00:00
+### Added watchlist self-heal and cleaned remaining async dashboard hazards
+Patched app/main.py to remove remaining async dashboard-status monkey patch hazards and add a crypto watchlist self-heal step before refresh_markets runs. The self-heal attempts to rebuild the watchlist from any cached crypto ticker sources already present on the bot and surfaces before/after counts in market_runtime. Verified syntax, restarted the bot, checked /api/status twice, tailed logs, and exported market observation CSV rows.
+
+## Note [strategy] 2026-03-08T02:25:32.378713+00:00
+### Restored cached-ticker full-scan fallback and aligned diagnostics with cached_crypto_tickers
+Patched app/main.py so refresh_markets now performs a full scan whenever cached_crypto_tickers is empty, instead of always assuming the cached watchlist exists. Also aligned watchlist diagnostics and self-heal helpers to use cached_crypto_tickers as the actual source of truth, replaced the /api/status route with an await-safe version, and added /api/debug/cached-tickers for direct inspection of ticker bootstrap state. Verified syntax, restarted the bot, checked status twice, tailed cached-ticker logs, and exported observation CSV rows.
+
+## Note [strategy] 2026-03-08T02:28:27.937673+00:00
+### Retried cached-ticker recovery with exact status-route patch
+Retried the cached ticker recovery with exact string replacements instead of regex route replacement. Patched refresh_markets to force a full scan when cached_crypto_tickers is empty, aligned diagnostics and self-heal logic to cached_crypto_tickers, converted the lingering market-observability dashboard wrapper back to sync, hardened the /api/status return path using the exact current route body, and added /api/debug/cached-tickers for direct inspection. Verified syntax, restarted the bot, checked both status and cached ticker state twice, tailed logs, and exported observation CSV rows.
+
+## Note [strategy] 2026-03-08T02:31:54.064839+00:00
+### Applied minimal cached-ticker full-scan recovery
+Applied the smallest possible repair to market bootstrap: refresh_markets now does a full scan when cached_crypto_tickers is empty, watchlist diagnostics now report cached_crypto_tickers, and two debug endpoints were added to inspect cached tickers and force one market refresh without touching the fragile /api/status route. Verified syntax, restarted the bot, checked cached ticker state before and after a forced refresh, and tailed logs for cached watch fetch activity.
+
+## Note [strategy] 2026-03-08T02:34:05.687318+00:00
+### Added direct refresh-pipeline probe endpoint
+Added /api/debug/refresh-pipeline to inspect the exact market-refresh stages now that cached_crypto_tickers is populated again. The endpoint reports cached ticker counts, selected watch window, raw market fetch count/sample from _fetch_cached_crypto_markets, refresh success/failure, and resulting market_snapshot counts. This isolates whether the remaining zero-snapshot issue is at raw fetch, normalization/classification, or snapshot assignment.
+
+## Note [strategy] 2026-03-08T02:40:04.556263+00:00
+### Added single-ticker decision probe endpoint
+Added /api/debug/market-decision/{ticker} so one real market can be traced through raw fetch, normalize, classify, eligibility, and snapshot conversion. This is to isolate exactly why raw cached-watch markets are not becoming market_snapshots even though the fetch pipeline is healthy.
+
+## Note [strategy] 2026-03-08T02:43:41.401378+00:00
+### Relaxed BTC range-bucket eligibility window for daily markets
+Appended a safe wrapper around TradingBot._evaluate_market_eligibility so BTC range-bucket markets are no longer rejected purely for being too far from expiry when they are still within a configurable same-day window. This keeps the original eligibility function intact and only overrides the too_far_to_expiry rejection for BTC range buckets using BTC_RANGE_BUCKET_MIN_HOURS_TO_EXPIRY and BTC_RANGE_BUCKET_MAX_HOURS_TO_EXPIRY. Verified syntax, restarted the bot, rechecked market pipeline counts, and reran the single-ticker decision probe.
+
+## Note [strategy] 2026-03-08T02:47:21.185908+00:00
+### Changed cached watch fetch to spot-centered bucket selection
+Patched app/main.py so _fetch_cached_crypto_markets no longer rotates a lexical ticker slice. It now ranks BTC range-bucket tickers by distance from current BTC spot and fetches the nearest watch_refresh_limit buckets first. This should improve market quality, reduce far-OTM dead rows, and make the fair-value/edge engine evaluate the buckets that actually matter.
+
+## Note [strategy] 2026-03-08T02:52:31.571872+00:00
+### Added side-aware market metrics to dashboard
+Appended a dashboard wrapper that exposes execution_edge_yes, execution_edge_no, yes_spread, no_spread, best_side, and best_exec_edge for each visible market row, then sorts markets by best_exec_edge. This is the safe next step after restoring the spot-centered watch window so we can see whether the remaining real opportunities are YES-side or NO-side before modifying trading logic.
+
+## Note [strategy] 2026-03-08T02:53:46.005076+00:00
+### Added side-aware market metrics to dashboard
+Appended a dashboard wrapper that exposes execution_edge_yes, execution_edge_no, yes_spread, no_spread, best_side, and best_exec_edge for each visible market row, then sorts markets by best_exec_edge. This is the safe next step after restoring the spot-centered watch window so we can see whether the remaining real opportunities are YES-side or NO-side before modifying trading logic.
+
+## Note [strategy] 2026-03-08T02:57:00.096040+00:00
+### Forced status-time fair-value enrichment for visible markets
+Appended a dashboard wrapper that force-runs _enrich_with_fair_value on visible market snapshots when fair_yes is still missing, then republishes fair_yes, edge, execution_edge_yes, execution_edge_no, best_side, and best_exec_edge into /api/status. This makes the research surface trustworthy before any further trading-logic changes.
+
+## Note [strategy] 2026-03-08T02:59:20.779643+00:00
+### Made crypto_lag intent generation side-aware
+Appended a safe wrapper around TradingBot._generate_intent so the crypto_lag family evaluates both execution_edge_yes and execution_edge_no, chooses the better executable side, and only emits an intent if that best-side edge clears the existing min_edge threshold. This keeps the no-trade discipline intact while allowing the strategy to exploit NO-side opportunities when they are actually superior.
+
+## Note [strategy] 2026-03-08T03:02:00.682628+00:00
+### Added crypto_lag side-aware paper scorecard
+Appended a dashboard wrapper that builds a lightweight crypto_lag paper-trade scorecard from the local trades database, including totals and by-side YES/NO summaries. This is the next step after restoring trustworthy market enrichment so we can decide whether the remaining edge is genuinely stronger on the NO side before changing thresholds or sizing.
+
+## Note [strategy] 2026-03-08T03:07:06.651051+00:00
+### Upgraded crypto_lag scorecard to use realized totals plus best-available by-side source
+Replaced the first scorecard wrapper with a multi-source version that uses the already-correct strategy perf counters for top-line totals and auto-discovers the best realized side-level SQLite source for YES/NO breakdowns. This prevents fill/order logs with zero realized PnL from masquerading as performance results.
+
+## Note [strategy] 2026-03-08T03:15:45.183467+00:00
+### Added canonical trade analytics layer and final row-safe perf wrapper
+Added app/strategy_lab/analytics_store.py with a self-healing trade_analytics table, backfilled closed shadow_trades into a canonical realized analytics layer, and appended a final row-safe dashboard wrapper that recomputes perf totals from summaries using dict-normalized sqlite rows. Verified syntax, restarted the bot, and rechecked /api/status for loop_error, crypto_lag perf totals, side-aware market summary, and realized trade analytics. Remaining work is to calibrate min_edge and sizing from these analytics rather than heuristics, especially for NO-side opportunities.
+
+## Note [bugfix] 2026-03-08T03:17:14.612318+00:00
+### Probed remaining sqlite Row.get bug after analytics layer landed
+Canonical trade analytics now works and side-aware market analysis is visible, but loop_error still shows sqlite3.Row object has no attribute get. Ran a focused code search for remaining row.get usage near sqlite fetch paths and dashboard wrappers so the last Row normalization bug can be removed before any threshold or sizing changes. Remaining work is to patch the final offending block, then gather separate NO-side paper results before recalibrating min_edge.
+
+## Note [bugfix] 2026-03-08T12:12:37.039460+00:00
+### Patched remaining sqlite Row.get usage in runtime analytics paths
+Focused the remaining sqlite Row.get fix on app/strategy_lab/shadow_engine.py and app/strategy_lab/analytics_store.py, which were the strongest remaining runtime candidates after grep. Converted all row.get access in those files to use a safe _row_dict(row) normalizer, then restarted and rechecked /api/status for loop_error. Remaining work is to patch any leftover endpoint-only sqlite Row usage if needed, then continue paper evaluation of side-aware NO opportunities before touching thresholds or sizing.
+
+## Note [bugfix] 2026-03-08T12:34:59.701578+00:00
+### Patched remaining sqlite Row.get usage in runtime analytics paths
+Focused the remaining sqlite Row.get fix on app/strategy_lab/shadow_engine.py and app/strategy_lab/analytics_store.py, which were the strongest remaining runtime candidates after grep. Converted all row.get access in those files to use a safe _row_dict(row) normalizer, then restarted and rechecked /api/status for loop_error. Remaining work is to patch any leftover endpoint-only sqlite Row usage if needed, then continue paper evaluation of side-aware NO opportunities before touching thresholds or sizing.
+
+## Note [bugfix] 2026-03-08T12:58:53.275215+00:00
+### Patched dict-vs-object runtime access after sqlite Row fix
+After eliminating sqlite3.Row.get failures, the loop surfaced a new dict/object mismatch: one runtime path was receiving plain dicts while still using attribute access like .strategy. Added a safe _field() accessor and replaced likely loop-path attribute reads in main.py, shadow_engine.py, and analytics_store.py. Verified loop health across repeated /api/status checks before resuming model work.
+
+## Note [strategy] 2026-03-08T13:09:51.173684+00:00
+### Added canonical opportunity dataset and outcome resolver
+System now records every evaluated market snapshot into market_opportunities with side-aware execution edges, best side, distance from spot, hours to expiry, and rationale. Added outcome backfill for expired opportunities using Kalshi market results, plus dashboard/debug analytics and CSV export. This is the foundation for promote/demote rules, side-specific scorecards, and real threshold tuning.
+
+## Note [bugfix] 2026-03-08T13:35:30.372987+00:00
+### Confirmed restore recovery; second failure was startup timing after unnecessary restart
+Restore succeeded and repeated health checks showed loop_error=None. The later connection reset happened after a second restart with no code changes, so it was a startup timing issue rather than a fresh runtime regression. Next step is to inspect the preserved opportunity dataset and current side-aware market rows, then build threshold calibration from resolved opportunity outcomes rather than patching more runtime code.
+
+## Note [strategy] 2026-03-08T14:01:23.377529+00:00
+### Installed architect consultant bundle and fee-correct enrichment
+Added an authoritative architect layer to /api/status and new consultant bundle/report endpoints. Future consultant feedback now lands against a stable contract that includes accepted/rejected reasoning, execution-truth metadata, side-aware best-edge market summaries, and strategy analytics. Also replaced flat visible edge scoring with schedule-shaped fee estimates using executable yes_ask and no_ask references so consultants review side-correct entry economics.
+
+## Note [strategy] 2026-03-08T14:05:52.248096+00:00
+### Repaired visible market row serialization for consultant surface
+Added a final dashboard wrapper that repopulates visible market rows from in-memory snapshots when entry_fee_yes, entry_fee_no, distance_from_spot_pct, distance_bucket, hours_to_expiry, or best-side fields are dropped by serialization. Rebuilds architect payload after repair so consultant-bundle and consultant-report see the same enriched truth. Verified syntax, restarted, and checked repaired field counts in /api/status. Remaining work is exit-v2: replace fixed-cent/edge-gone behavior with model-relative deterioration, hysteresis, and profit-giveback exits.
+
+## Note [strategy] 2026-03-08T14:21:28.614724+00:00
+### Installed architect exit-v2 and side-correct shadow bookkeeping
+Replaced legacy fixed-cent/edge-gone shadow exits with architect exit-v2 rules: model-relative deterioration plus hysteresis, profit-giveback, negative-edge invalidation, time exit, and spread blowout. Also corrected shadow open/mark/close bookkeeping to persist and value the executable side instead of hardcoding YES. Verified syntax, restarted, checked /api/status loop health, and exposed exit_policy plus close_reason_summary in the architect/debug surface so future consultant reviews can judge exit behavior with truthful telemetry. Remaining work is to confirm whether new shadow entries now begin populating NO-side realized rows; if not, patch the upstream side-selection caller next before any threshold or sizing changes.
+
+## Note [strategy] 2026-03-08T15:52:25.306001+00:00
+### Added post-exit-v2 consultant cohorts
+Architect added cohort-separated analytics so consultant reviews no longer mix legacy edge_gone/stop_loss trades with new architect_exit_v2 behavior. Status/debug now expose all_closed versus post_exit_v2_closed, plus post_exit_v2_by_side and post_exit_v2_by_reason. This is the required evidence surface before any threshold or sizing changes.
+
+## Note [strategy] 2026-03-08T16:05:29.165792+00:00
+### Installed architect gate diagnostics and opportunity replay surface
+Added architect_gates diagnostics to classify idle-vs-actionable state, added architect_backtest replay summary from market_opportunities, and exposed consultant-bundle-v2 so outside reviewers can judge whether the system is idle because of no positive edge, threshold gating, or secondary gates. This is the decision layer before any threshold or sizing change.
+
+## Note [bugfix] 2026-03-08T16:16:37.453925+00:00
+### Recovered shadow_engine after broken NO-side patch
+Architect restored shadow_engine.py from the newest safe backup after the consultant_guardrails_v2 patch introduced a syntax error. main.py OrderIntent guard and outcomes settlement-proxy wrapper were preserved if present. System returned to paper-safe operation. Next step is a controlled NO-side shadow pricing patch based on exact live code context from shadow_engine.py, not a blind string replacement.
+
+## Note [strategy] 2026-03-08T16:21:16.071803+00:00
+### Patched shadow engine for true NO-side mark and close pricing
+Architect applied the minimal safe shadow_engine patch so NO positions are marked and closed using no_bid instead of yes_bid. This fixes consultant-confirmed fake NO-side losses without changing thresholds, sizing, or broader strategy logic. Runtime health, OrderIntent guard, and settlement-reference policy were rechecked after restart.
+
+## Note [strategy] 2026-03-08T16:46:04.538637+00:00
+### Added architect consultant v2 evidence surfaces
+Architect accepted consultant ideas for synthetic BRTI proxy, volatility regime filter, tail-adjusted probability overlay, and maker-path diagnostics. Implemented all four as evidence surfaces inside dashboard/debug status without changing thresholds, sizing, or live behavior. This prepares the next step: wire basis proxy and tail overlay into replay/backtest before any execution-policy changes.
+
+## Note [strategy] 2026-03-08T16:54:28.018370+00:00
+### Added architect consultant v3 execution decision surfaces
+Architect consultant v3 now compares taker vs maker opportunity counts, actionable rows, average maker advantage, and regime/basis/tail context directly in status and consultant-report-v3. Architect decision is now explicit: execution-style choice comes before threshold or sizing changes.
+
+## Note [strategy] 2026-03-08T17:00:37.862835+00:00
+### Implemented architect maker shadow quote simulator
+Added a maker-shadow comparison layer that simulates resting quotes from visible market rows, reports candidate counts by side, surfaces top maker quote opportunities, and upgrades architect execution guidance when maker-shadow evidence is strong. Architect decision remains: compare maker vs taker in shadow before any threshold or sizing change.
+
+## Note [strategy] 2026-03-08T17:08:06.609044+00:00
+### Added maker-vs-taker comparison evidence surface
+Implemented an execution comparison layer that measures taker vs maker edge on visible rows, summarizes by bucket and side, and upgrades architect guidance to record maker-vs-taker comparison cohorts before any threshold or sizing change.
+
+## Note [strategy] 2026-03-08T17:20:51.854413+00:00
+### Added replay calibration and consultant evidence v4
+Recorded execution-compare cohorts into a canonical table, surfaced a rolling-60s TWAP settlement proxy for replay, and exposed a historical lookup by distance bucket / side / hours bucket. Architect choice log now explicitly shows accepted, modified, and denied consultant ideas. Architect next step remains: wire lookup and TWAP into replay before any threshold or sizing changes.
+
+## Note [strategy] 2026-03-08T17:30:11.646597+00:00
+### Added replay capture runtime for TWAP and future lookup resolution
+Added a runtime capture layer that records BTC spot samples on each market refresh, resolves expired market_opportunities with a rolling-60s TWAP proxy when enough samples exist, and surfaces capture status plus historical lookup readiness in architect debug outputs. This is evidence plumbing only and does not change thresholds or sizing.
+
+## Note [strategy] 2026-03-08T17:35:51.476342+00:00
+### Added execution cohort resolution and replay lookup source
+Added runtime resolution for execution_compare_cohorts using the rolling-60s TWAP settlement proxy, plus maker/taker lookup surfaces by distance bucket, side, and hours bucket. This is still evidence-only and exists to decide maker-vs-taker and calibration before any threshold or sizing changes.
+
+## Note [strategy] 2026-03-08T17:40:36.000397+00:00
+### Backfilled old execution compare cohorts to enable future replay lookup
+Patched cohort resolution to tolerate the legacy execution_compare_cohorts schema, add missing columns, and backfill close/quote/distance/hour fields from market_opportunities where possible. This preserves evidence-first workflow and is still for replay calibration only before any threshold or sizing changes.
+
+## Note [strategy] 2026-03-08T17:41:07.152159+00:00
+### Backfilled old execution compare cohorts to enable future replay lookup
+Patched cohort resolution to tolerate the legacy execution_compare_cohorts schema, add missing columns, and backfill close/quote/distance/hour fields from market_opportunities where possible. This preserves evidence-first workflow and is still for replay calibration only before any threshold or sizing changes.
+
+## Note [strategy] 2026-03-08T18:03:26.222854+00:00
+### Added market_opportunities fallback lookup for replay calibration
+Cohort resolution now falls back to resolved market_opportunities best-side outcomes as a taker-style empirical lookup when execution_compare cohorts have not yet resolved. This is replay-only evidence plumbing and does not change thresholds or sizing.
+
+## Note [strategy] 2026-03-08T18:08:43.311885+00:00
+### Added replay scoring bridge for maker/taker, regime, and tail evidence
+Architect added a replay scoring bridge that surfaces empirical maker lookup, taker lookup, regime lookup, and tail-overlay replay rows from resolved execution_compare cohorts when available, otherwise from market_opportunities fallback. This is replay-only evidence plumbing and still does not change thresholds or sizing. Verified syntax, restart, and status-time replay scoring surface.
+
+## Note [strategy] 2026-03-08T18:12:48.336358+00:00
+### NEXT CHAT BOOTSTRAP - architect state, implemented surfaces, and remaining plan
+Architect doctrine remains: build truth first, evidence second, thresholds third, live last. Current safe state: live_armed=false, mode=paper. Confirmed implemented and intended to stay: truthful paper equity, side-aware execution edges, dynamic BTC vol, NO-side intent support, side-correct shadow mark/close pricing, truthful expiry using spot-vs-bucket bounds, opportunity dataset capture, architect consultant surfaces, maker-vs-taker comparison surfaces, replay capture runtime, TWAP settlement proxy runtime capture, execution compare cohorts, replay calibration surfaces, replay scoring bridge, and consultant plain-text reports. Confirmed strategic decisions already made by architect: DO NOT lower thresholds yet; DO NOT change sizing yet; DO NOT use optimistic NO entry scoring with no_bid; DO NOT promote tail overlay live yet; DO NOT promote basis proxy to live authority yet; DO NOT make direct live pricing decisions from consultant ideas before replay evidence. Current priority queue for next chat, in order: (1) verify latest replay_scoring bridge outputs after the just-applied patch; (2) continue collecting and resolving rows so replay_scoring uses real resolved rows instead of empty/fallback states; (3) wire empirical lookup tables from resolved rows into replay scoring by distance_bucket + side + hours_bucket + regime; (4) compare maker vs taker expectancy on resolved cohorts before any threshold or sizing change; (5) promote TWAP proxy into replay settlement comparison only, not live authority; (6) promote tail overlay into replay scoring only, then measure calibration lift; (7) add regime-sliced replay views using realized-vol / momentum / spread state; (8) implement maker shadow quote comparison cohort persistence if not already persisted end-to-end; (9) only after resolved cohort evidence is nontrivial, revisit exit-v3 model-relative deterioration + hysteresis; (10) only after replay evidence is positive, discuss threshold/sizing changes. Known current blocker/state to watch in next chat: resolved execution_compare rows may still be zero, so replay lookup surfaces can stay empty even when runtime is healthy; this is not a failure, it means evidence has not matured yet. New chat should begin by reading /api/debug/full, /api/debug/handoff-memory, /api/debug/consultant-report-v5, /api/debug/replay-scoring, /api/debug/replay-capture-report, and /api/debug/cohort-resolution-report, then decide the next evidence-plumbing patch. Architect stance on consultant feedback: accepted - maker vs taker cohort recording, rolling 60s TWAP proxy for replay, historical lookup by distance/side/hours, regime scaling replay-only; modified - direct Deribit smile live pricing becomes empirical replay overlay first, basis proxy live authority becomes replay comparison first, exit rewrites only after post-policy evidence; denied - threshold or sizing changes before resolved cohort evidence, optimistic no_bid entry scoring, unconditional removal of exits, production promotion of tail overlay before replay proof.
+
+## Note [strategy] 2026-03-08T18:38:35.125915+00:00
+### Added replay/cohort debug route pair
+Added /api/debug/replay-capture-report and /api/debug/cohort-resolution-report in app/main.py. These expose replay/capture/cohort diagnostics plus read-only SQLite resolution counts without changing thresholds, sizing, live state, or execution logic. Verified after rebuild: /api/status healthy in paper mode with live disarmed, and both new endpoints return expected replay-only evidence. Current state remains pre-maturity: resolved cohort/opportunity rows are still zero because rows have not yet reached expiry.
+
+## Note [strategy] 2026-03-08T18:45:56.344107+00:00
+### Added regime-sliced replay debug view
+Added /api/debug/replay-regime-report in app/main.py. This is replay-only evidence plumbing: it combines current runtime regime diagnostics (realized-vol / momentum / basis proxy) with spread-state diagnostics from recent market_opportunities and resolved replay groupings by regime + distance_bucket + hours_bucket + side from execution_compare_cohorts, plus spread-sliced replay from resolved market_opportunities. It does not change thresholds, sizing, live state, or execution logic. Verified after rebuild with /api/status healthy in paper mode and live disarmed.
+
+## Note [strategy] 2026-03-08T18:49:18.996231+00:00
+### Added maker shadow comparison debug report
+Added /api/debug/maker-shadow-comparison-report in app/main.py. This is replay-only evidence plumbing: it surfaces maker_shadow_simulator status, architect execution decision, execution_compare cohort runtime, persisted maker-vs-taker cohort counts, latest maker candidate rows, and resolved maker-vs-taker bucket summaries from execution_compare_cohorts. It does not change thresholds, sizing, live state, or execution logic. Verified after rebuild with /api/status healthy in paper mode and live disarmed.
+
+## Note [strategy] 2026-03-08T18:52:59.608950+00:00
+### Added replay settlement comparison debug report
+Added /api/debug/replay-settlement-comparison in app/main.py. This is replay-only evidence plumbing: it compares rolling-60s TWAP proxy implied bucket outcomes against resolved market_result outcomes from execution_compare_cohorts, with grouped agreement summaries by regime and distance/hour buckets plus example agreement/disagreement rows. It does not change thresholds, sizing, live state, or execution logic. Verified after rebuild with /api/status healthy in paper mode and live disarmed. Remaining known issue: resolved rows may still be zero until current markets expire, so comparison tables can remain empty even when runtime is healthy.
+
+## Note [strategy] 2026-03-08T18:57:30.738959+00:00
+### Added tail overlay replay debug report
+Added /api/debug/tail-overlay-replay-report in app/main.py. This is replay-only evidence plumbing: it surfaces current tail overlay runtime state, existing replay tail surface, and resolved execution_compare cohort summaries grouped by tail multiplier bucket, regime, distance bucket, and hours bucket, plus recent resolved examples. It does not change thresholds, sizing, live state, or execution logic. Verified after rebuild with /api/status healthy in paper mode and live disarmed. The report can remain mostly empty until current cohorts begin resolving.
+
+## Note [ops] 2026-03-08T19:04:23.449902+00:00
+### Prepared consultant export bundle for strategy review
+Forced safe posture in paper mode with live disarmed, captured the current consultant/replay/debug surfaces into a timestamped export directory, and generated a consultant request brief focused on profitable strategy improvements before any threshold or sizing changes. Re-exported the handoff bundle after appending this note so outside reviewers receive the newest memory plus replay/capture/regime/maker-shadow/settlement/tail surfaces. Remaining known issue: resolved execution_compare and market_opportunities rows may still be sparse or zero until expiry, so replay tables can remain mostly empty even when runtime is healthy.
+
+## Note [strategy] 2026-03-08T19:21:49.612498+00:00
+### Added microstructure truth foundation v1
+Added replay-only microstructure truth scaffolding in app/main.py. Safely expanded execution_compare_cohorts and market_opportunities with canonical telemetry columns for slippage, partial fill, queue proxy, toxic-fill penalties, weekend flags, and regime percentile, then exposed /api/debug/microstructure-truth-report to show doctrine-safe execution realism assumptions, dataset population readiness, short-horizon spot-move toxicity context, and microstructure-adjusted visible opportunities. Verified after rebuild with /api/status healthy in paper mode and live disarmed, plus the new debug report responding and schema columns present. Remaining known issue: the new telemetry columns are foundation-only until future patches populate them during cohort/opportunity writes and use them in replay scoring.
+
+## Note [strategy] 2026-03-08T19:26:10.741409+00:00
+### Added BTC same-day near-expiry eligibility override
+Appended a safe wrapper around TradingBot._evaluate_market_eligibility so BTC same-day range-bucket markets are no longer rejected solely for too_close_to_expiry when they remain within a configured near-expiry window and still satisfy a max-spread guardrail. Also added /api/debug/eligibility-policy-report to expose override config, override counts, and current market-pipeline state. Verified after rebuild with /api/status healthy in paper mode and live disarmed. Remaining known issue: this only reopens the eligible funnel; the microstructure truth columns still need population during opportunity/cohort writes and replay scoring still needs empirical resolved rows before any threshold or sizing changes.
+
+## Note [strategy] 2026-03-08T19:39:20.036884+00:00
+### Fixed near-expiry eligibility blocker and populated execution-realism proxies
+Replaced the narrow BTC near-expiry override with a field-tolerant v2 wrapper that recognizes normalized close_dt/close_time values, applies a same-day BTC range-bucket near-expiry override without requiring an exact reject-reason match, and still preserves hard vetoes like spread_too_wide. Also added execution-realism backfill that populates slippage, partial-fill, weekend-flag, requested/simulated fill price, and short-horizon toxicity proxy columns for market_opportunities and execution_compare_cohorts, plus /api/debug/execution-realism-report for verification. Verified after rebuild with /api/status healthy in paper mode and live disarmed. Remaining known issue: queue-depth / OBI / true FIFO latency realism still require dedicated order-book telemetry before they can be modeled truthfully.
+
+## Note [strategy] 2026-03-08T19:43:52.752637+00:00
+### Aligned /api/status with effective near-expiry eligibility logic
+Appended a dashboard-status wrapper that recomputes effective eligibility counts from the current wrapped _evaluate_market_eligibility logic and injects them into health.market_pipeline plus health.market_pipeline_effective. Also added /api/debug/effective-eligibility-report so operator truth reflects the actual current override behavior instead of stale or missing counters. This does not loosen spread guardrails, thresholds, sizing, or live mode. Verified after rebuild with /api/status healthy and the effective eligibility funnel visible.
+
+## Note [strategy] 2026-03-08T19:49:33.510205+00:00
+### Added market bootstrap truth report and non-destructive effective funnel
+Appended market-bootstrap truth diagnostics in app/main.py. Added /api/debug/market-bootstrap-truth to inventory cached ticker state, in-memory market sources, refresh methods, and effective eligibility before/after one safe refresh probe. Also made the dashboard effective-funnel wrapper non-destructive so /api/status no longer overwrites market_pipeline with zeros when the collector sees no candidate source. Verified after rebuild with /api/status healthy in paper mode and live disarmed. Remaining known issue: if cached tickers exist but market snapshots still do not populate after a refresh probe, the next fix is in refresh->snapshot assignment rather than eligibility.
+
+## Note [strategy] 2026-03-08T19:54:52.163132+00:00
+### Fixed cached ticker shape mismatch in refresh path
+Appended a non-invasive wrapper around refresh_markets and _fetch_cached_crypto_markets so cached_crypto_tickers is temporarily coerced into pair-shaped iterable form during the refresh path, fixing the too many values to unpack failure when the cached ticker source is a dict. Added /api/debug/cached-ticker-shape-fix for operator visibility and re-ran refresh/bootstrap diagnostics after rebuild. This does not change thresholds, sizing, spread guardrails, or live mode. Remaining known issue: if snapshots still stay empty after the shape fix, the next bug is downstream in normalization/classification or snapshot assignment rather than cached ticker iteration.
+
+## Note [system] 2026-03-08T20:24:04.742905+00:00
+### Added roadmap to source-of-truth path and repaired P0 snapshot/json health
+Embedded the official roadmap into runtime surfaces and source-of-truth memory: P0 runtime health, P1 expiry-cluster inventory skew, P2 maker quoting plus LIP rebate replay, P3 queue/imbalance/toxic-fill telemetry, P4 ensemble fair value, and P5 projected-settlement replay. In the same patch, hardened market_snapshots normalization so snapshots stay dict-shaped and expose required fields like spot_symbol, and forced dashboard_status outputs to be JSON-safe by recursively converting datetimes before /api/status serialization. Verified after rebuild with /api/status healthy again and /api/debug/runtime-roadmap returning the roadmap and P0 health state. Remaining known issue: deeper refresh/bootstrap logic still needs cleanup, but runtime health is the active gate before P1/P2 implementation.
+
+## Note [system] 2026-03-08T20:27:35.219622+00:00
+### Restored raw_close_time compatibility in snapshot adapters
+Patched snapshot adapters so market_snapshots entries preserve the original MarketSnapshot contract expected by older runtime paths: they now expose spot_symbol and raw_close_time attributes, with raw_close_time inferred from close_dt/close_time and close_time kept as an ISO string. Also added /api/debug/raw-close-time-contract for verification. Verified after rebuild with /api/status healthy and the remaining P0 blocker re-evaluated. Roadmap remains embedded in runtime/source-of-truth memory and P1/P2 stay gated behind loop health.
+
+## Note [strategy] 2026-03-08T20:33:12.327381+00:00
+### Started P1 cluster inventory foundation and synced roadmap progress
+With P0 materially green enough to proceed, added the first replay-only P1 foundation layer in app/main.py. This patch creates inventory-related schema columns in execution_compare_cohorts and market_opportunities, computes expiry-cluster inventory state from current shadow_positions plus visible BTC bucket candidates, surfaces advisory inventory penalties / quote-size multipliers / reservation shifts in architect.cluster_inventory_foundation and /api/debug/cluster-inventory-report, and marks roadmap progress so P0 becomes materially_green when loop_error is null and P1 becomes active_foundation. Also repairs stale eligible_markets counters from market_snapshots when the loop is healthy. No thresholds, sizing, spread guardrails, or live behavior were changed.
+
+## Note [strategy] 2026-03-08T20:34:43.571681+00:00
+### Started P1 cluster inventory foundation and synced roadmap progress
+With P0 materially green enough to proceed, added the first replay-only P1 foundation layer in app/main.py. This patch creates inventory-related schema columns in execution_compare_cohorts and market_opportunities, computes expiry-cluster inventory state from current shadow_positions plus visible BTC bucket candidates, surfaces advisory inventory penalties / quote-size multipliers / reservation shifts in architect.cluster_inventory_foundation and /api/debug/cluster-inventory-report, and marks roadmap progress so P0 becomes materially_green when loop_error is null and P1 becomes active_foundation. Also repairs stale eligible_markets counters from market_snapshots when the loop is healthy. No thresholds, sizing, spread guardrails, or live behavior were changed.
+
+## Note [strategy] 2026-03-08T20:40:21.262555+00:00
+### Started P2 maker rebate foundation and synced roadmap progress
+Added replay-only P2 maker-rebate foundation in app/main.py. This patch creates LIP/maker rebate schema fields in execution_compare_cohorts and market_opportunities, backfills conservative rebate-scenario estimates into recent rows, surfaces maker expectancy before and after rebate (and after inventory penalty where available) in architect.maker_rebate_foundation and /api/debug/maker-rebate-report, and advances runtime roadmap progress so P2 becomes active_foundation while preserving P0 materially_green and P1 active_foundation. No thresholds, sizing, spread guardrails, or live behavior were changed.
+
+## Note [strategy] 2026-03-08T20:45:58.039612+00:00
+### Fixed P2 rebate backfill to tolerate schema drift
+Patched the replay-only P2 maker rebate foundation so historical backfill no longer assumes every table version contains open_interest or identical size columns. The backfill now introspects SQLite schema with PRAGMA table_info, selects only columns that actually exist, and updates recent market_opportunities and execution_compare_cohorts rows without failing on schema drift. Verified after rebuild with /api/status healthy, loop_error still null, and the dedicated maker rebate backfill-fix debug route reporting the columns used plus backfilled row counts. Remaining known issue: rebate math is still conservative foundation-only until true Kalshi LIP parameter ingestion and queue/imbalance/toxic-fill telemetry are added in P3.
+
+## Note [system] 2026-03-08T20:50:31.432040+00:00
+### Added permanent paper_using_newest_infra status flag and time-contract guard
+Added a permanent paper_using_newest_infra truth flag to /api/status and /api/debug/paper-using-newest-infra. The flag turns true only when paper mode is active, live is disarmed, loop_error is null, market_snapshots are dict-shaped and nonempty, snapshot contract fields like spot_symbol/raw_close_time are present and compatible, eligible_markets is positive, and P1/P2 foundation surfaces are attached. In the same patch, wrapped eligibility evaluation with a defensive raw_close_time/close_dt/close_time normalizer so older string-vs-datetime regressions cannot silently reappear in paper evaluation paths. This keeps the roadmap/source-of-truth bundle honest and gives future models/operators a permanent answer to whether paper is actually using the newest infrastructure stack.
+
+## Note [strategy] 2026-03-08T20:55:46.557941+00:00
+### Started P3 queue/imbalance/toxic-fill foundation and synced roadmap progress
+Added replay-only P3 foundation in app/main.py. This patch creates queue/imbalance/toxic-fill schema fields in execution_compare_cohorts and market_opportunities, computes advisory order-book imbalance, queue-depth proxy, 1s toxic-fill estimate, and maker-shield suggestions for visible markets, backfills recent matching rows where possible, surfaces the results in architect.queue_imbalance_toxic_fill_foundation and /api/debug/queue-imbalance-toxic-fill-report, and advances runtime roadmap progress so P3 becomes active_foundation while preserving paper_using_newest_infra=true and all prior P0/P1/P2 status. No thresholds, sizing, spread guardrails, or live behavior were changed.
+
+## Note [strategy] 2026-03-08T21:12:19.057262+00:00
+### Started P4 ensemble fair-value foundation and synced roadmap progress
+Added replay-only P4 foundation in app/main.py. This patch creates ensemble fair-value schema fields in execution_compare_cohorts and market_opportunities, computes a conservative ensemble score from existing execution-edge, maker-rebate/inventory, and P3 microstructure signals, backfills recent matching rows where possible, surfaces the results in architect.ensemble_fair_value_foundation and /api/debug/ensemble-fair-value-report, and advances runtime roadmap progress so P4 becomes active_foundation while preserving paper_using_newest_infra=true and all prior P0/P1/P2/P3 status. No thresholds, sizing, spread guardrails, or live behavior were changed.
+
+## Note [strategy] 2026-03-08T21:16:46.399273+00:00
+### Recovered P4 effective market surface and restored paper truth checks
+Added a replay-safe recovery layer after the initial P4 ensemble foundation patch. This wrapper rebuilds the effective visible market surface from status.markets, bot.market_snapshots, or the existing P1/P2/P3 architect surfaces when the live market list is temporarily empty after restart, repairs eligible_markets from that effective surface when appropriate, rebuilds the P4 ensemble report from the recovered surface, and recomputes paper_using_newest_infra so the truth flag reflects repaired runtime state instead of transient cold-start emptiness. No thresholds, sizing, spread guardrails, or live behavior were changed.
+
+## Note [system] 2026-03-08T21:21:41.233699+00:00
+### Recovered empty market surface after restart and restored paper visibility
+Added a replay-safe market hydration recovery layer in app/main.py. When dashboard/status is healthy but the visible market surface is empty after restart, this wrapper fetches raw market candidates from cached market helpers, normalizes them into snapshot adapters, restores bot.market_snapshots and status.markets, repairs effective eligible counts, and recomputes paper_using_newest_infra. This resolves the cold-start empty-surface state that was causing P4 visible_market_count=0 and paper_using_newest_infra=false despite loop_error=null. No thresholds, sizing, or live behavior were changed.
+
+## Note [system] 2026-03-08T21:26:16.469379+00:00
+### Fixed hydration fetch path for no-arg cached market helper
+Added market hydration recovery v2 in app/main.py. The previous recovery layer failed because it attempted to call TradingBot._fetch_cached_crypto_markets with a ticker-window argument even though the bound method only accepts self. The new version is signature-aware, prefers no-arg calls, treats post-call market_snapshots hydration as a valid success path even when methods return None, repairs status.markets and eligible counts from recovered snapshots, and recomputes paper_using_newest_infra. No thresholds, sizing, or live behavior were changed.
+
+## Note [system] 2026-03-08T21:30:24.935999+00:00
+### Distinguished infra readiness from between-market-windows state
+Added market-window truth logic in app/main.py. When loop health is green and snapshot inventory is present but the current active market set is empty because the latest visible contract window has already closed, status now marks the system as between_market_windows instead of falsely implying infra regression. This keeps paper_using_newest_infra true when the infrastructure is healthy while separately surfacing active market availability, snapshot counts, and latest snapshot close time. No thresholds, sizing, or live behavior were changed.
+
+## Note [strategy] 2026-03-08T21:38:24.104935+00:00
+### Fixed stale market-availability truth and added honest P5 projection
+Did not reapply the old consultant regex patch for exits/TWAP because those issues were already addressed in the newer architecture. Instead patched app/main.py to repair the real current blocker: future-market discovery and stale truth reporting after the visible daily series finalized. The new layer attempts future-market discovery from existing market methods and snapshots, repairs status markets/eligible counts when future tradable rows are found, distinguishes active_window_available vs between_market_windows vs discovery_failed_or_no_future_markets_visible, makes paper_using_newest_infra reason exact instead of stale, and adds an honest replay-only P5 money-maker projection that reports insufficient evidence until resolved replay matures. No thresholds, sizing, or live behavior were changed.
+
+## Note [system] 2026-03-08T21:45:10.969306+00:00
+### Added public future-market bootstrap and repaired stale newest-infra truth
+Did not reapply the older consultant exit/TWAP patch because architect exit-v2, NO-side side-correct bookkeeping, and TWAP replay plumbing were already in the newer stack. Instead added a public future-market bootstrap in app/main.py that queries Kalshi public markets, filters future BTC range buckets, restores market_snapshots/status.markets when the cached discovery surface is empty after expiry, recomputes eligible_markets and markets_available_for_trading from the actual active future surface, fixes paper_using_newest_infra_reason so between_market_windows only appears when true, and keeps P5 honest by reporting insufficient evidence until replay matures. Verified after rebuild with /api/status healthy; remaining issue, if any, is absence of visible future BTC markets from the public endpoint rather than stale local cached discovery.
+
+## Note [data] 2026-03-08T21:52:42.423267+00:00
+### Added Deribit DVOL foundation and corrected public future-market bootstrap filters
+Patched app/main.py to add honest data_sources health and a live Deribit DVOL foundation, while also correcting the public future-market bootstrap logic so it no longer combines status=open with min_close_ts. The new layer polls Deribit volatility-index data, surfaces current/missing high-ROI data streams in /api/status and /api/debug/data-sources-health, annotates visible markets with the current BTC DVOL level, reattempts public BTC future-market discovery using filter-compatible Kalshi requests, recomputes eligible_markets and paper_using_newest_infra truth from the repaired surface, and advances the embedded roadmap with a P6 professional data-source phase. No thresholds, sizing, spread guardrails, or live behavior were changed.
+
+## Note [system] 2026-03-08T22:00:19.797167+00:00
+### Switched future discovery to KXBTC events bootstrap and expanded professional data roadmap
+Patched app/main.py to recover future BTC bucket harvesting through Kalshi events discovery instead of relying on the stale broad-market surface. The new layer queries /events with series_ticker=KXBTC, with_nested_markets=true, status=open, and min_close_ts, hydrates nested future markets into market_snapshots, normalizes both legacy cent prices and current *_dollars fields, recomputes eligible_markets and paper_using_newest_infra truth from the repaired surface, and extends the embedded roadmap/source-of-truth queue with the next institutional streams: CF BRTI settlement truth, Kalshi queue positions, private orderbook_delta, public trade-tape whale telemetry, and Deribit skew/smile. No thresholds, sizing, or live arming changes were made.
+
+## Note [data] 2026-03-08T22:04:06.657256+00:00
+### Added Kalshi queue positions foundation to professional data roadmap
+Patched app/main.py to add authenticated Kalshi queue-position telemetry as the next professional data-source layer. The new status/debug surfaces attempt to fetch /portfolio/orders/queue_positions for currently visible market tickers using existing bot/client signing helpers, annotate visible markets with live queue position fields when available, surface queue_positions health inside /api/status and /api/debug/queue-positions-health, remove queue positions from the missing-high-ROI list once live, and sync the embedded roadmap so P6 explicitly advances from harvesting toward queue-aware maker execution. No thresholds, sizing, or live arming behavior were changed.
+
+## Note [data] 2026-03-08T22:09:31.068766+00:00
+### Added Deribit 25d skew foundation to professional data roadmap
+Patched app/main.py to add a Deribit skew/smile foundation using active BTC options. The new layer enumerates active BTC option instruments, chooses the nearest practical expiry, samples nearby call/put candidates, reads per-instrument mark_iv and greeks.delta from Deribit order books, computes a live 25-delta put-minus-call skew, annotates visible markets with downside tail bias, updates /api/status and /api/debug/deribit-skew-foundation, removes Deribit skew from the missing-high-ROI queue once live, and syncs the embedded roadmap so professional data upgrades now reflect queue positions plus skew as completed foundations before private orderbook_delta, public trade tape, and settlement-truth upgrades.
+
+## Note [data] 2026-03-08T22:13:04.078518+00:00
+### Fixed Deribit skew transport to query-string HTTP GET
+Repaired the Deribit skew foundation transport by switching option-surface calls from GET-with-body to query-string HTTP GET for public/get_instruments and public/get_order_book. The 25-delta selection logic stays the same, but the fetch path is now aligned with production-friendly HTTP usage so skew harvesting can go live and come off the missing-high-ROI list once successful.
+
+## Note [data] 2026-03-08T22:17:49.257940+00:00
+### Added Kalshi public trade tape and large-print telemetry foundation
+Patched app/main.py to ingest Kalshi public trade tape via GET /markets/trades for visible markets, compute recent 15-minute tape imbalance, detect large prints, annotate visible markets with whale/tape fields, expose /api/debug/public-trade-tape-foundation, remove public trade tape from the missing-high-ROI queue once live, and sync the embedded roadmap so P6 now reflects queue positions, Deribit skew, and public trade tape as active harvested foundations before private orderbook_delta and settlement-truth upgrades.
+
+## Note [strategy] 2026-03-08T22:44:31.101744+00:00
+### Adopted institutional quant strategy as model bible
+Created institutional_quant_strategy.md in repo root and restored the institutional quant model-bible source-of-truth route using docker-compose-compatible restart flow. Verified /api/status and /api/debug/institutional-quant-model-bible after rebuild. Remaining issue: this makes the architecture authoritative, but reservation-price, OBI veto, and post-trade markout enforcement still need to be promoted from roadmap/foundation into actual entry logic to stop catastrophic high-price NO entries.
+
+## Note [strategy] 2026-03-08T23:10:11.043178+00:00
+### Activated small institutional entry-gate hotfix
+Activated the paper-only institutional entry gate wrapper around ShadowEngine.open_shadow_trade after rebuild. It blocks new shadow entries when entry price is above reservation price, when OBI is strongly against the side, when flow looks toxic, or when same-side cluster inventory is already too large. This is intended to stop new bad 0.90+ style fills. It does not repair already-open legacy positions.
+
+## Note [strategy] 2026-03-08T23:14:22.583508+00:00
+### Added institutional entry gate preview route
+Added /api/debug/institutional-entry-gate-preview so current visible markets can be evaluated against reservation-price, OBI, toxicity, spread, edge, and cluster-inventory block rules before any new shadow entry occurs. This is the proof surface for whether the new model would stop bad 0.90+ style fills.
+
+## Note [strategy] 2026-03-08T23:17:16.969122+00:00
+### Added institutional entry audit trail
+Added a paper-only audit wrapper around ShadowEngine.open_shadow_trade. Every attempted entry now records allowed vs blocked, primary reason, and decision context (ticker, side, spread, edge, OBI, toxicity). This makes the institutional gate measurable during live paper harvesting.
+
+## Note [strategy] 2026-03-08T23:25:13.910061+00:00
+### Repaired live institutional entry preview stream
+Removed the broken v1 preview patch and replaced it with a smaller syntax-safe v2 route and dashboard attachment. Live status now exposes source_used, preview_count, blocked_count, allowed_count, and example institutional gate decisions before open_shadow_trade is called.
+
+## Note [strategy] 2026-03-08T23:42:39.237034+00:00
+### Hydrated institutional preview from snapshots and replay DB
+Upgraded institutional live preview to merge watched tickers with live market_snapshots and latest market_opportunities rows, so entry_price, spread, and replay-enriched edge fields are no longer defaulting to zero. This makes the preview honest enough to decide the next enforcement patch.
+
+## Note [strategy] 2026-03-09T00:17:32.353097+00:00
+### Activated paper-only institutional entry enforcement v4
+Turned the hydrated institutional preview into paper-only entry enforcement by wrapping ShadowEngine should-enter methods. New paper entries that fail the institutional gate are now blocked and audited. Existing positions were not modified.
+
+## Note [strategy] 2026-03-09T00:21:22.062082+00:00
+### Attached institutional entry enforcement to discovered runtime entry methods
+Fixed the failed v4 enforcement attach by introspecting ShadowEngine and TradingBot for actual entry-path methods, then wrapping discovered candidates for paper-only institutional entry blocking and audit.
+
+## Note [strategy] 2026-03-09T00:24:41.028691+00:00
+### Bridged live institutional enforcement to hydrated preview data
+Institutional entry enforcement now makes live paper decisions from the same hydrated ticker state used by preview: watched samples + market snapshots + latest market_opportunities row. This should eliminate the preview/live mismatch and start blocking weak entries in real paper flow.
+
+## Note [strategy] 2026-03-09T00:30:48.323312+00:00
+### Moved institutional gate enforcement to candidate path
+Institutional gate now wraps TradingBot._is_shadow_candidate in addition to ShadowEngine.open_shadow_trade. Added a v7 probe route that evaluates the current watched market set through the same hydrated decision engine, so preview/live mismatch can be measured directly and weak entries can be blocked before shadow open.
+
+## Note [strategy] 2026-03-09T00:34:57.173464+00:00
+### Moved institutional gate enforcement to candidate path
+Institutional gate now wraps TradingBot._is_shadow_candidate in addition to ShadowEngine.open_shadow_trade. Added a v7 probe route that evaluates the current watched market set through the same hydrated decision engine, so preview/live mismatch can be measured directly and weak entries can be blocked before shadow open.
+
+## Note [strategy] 2026-03-09T00:40:08.395946+00:00
+### Forced institutional candidate gate to use canonical hydrated economics
+Candidate-gate enforcement now hydrates from strategy_lab.db first, then watched-market status rows, before deciding whether to block. This removes the preview/live mismatch where probe rows blocked weak entries but raw candidate snapshots still allowed them.
+
+## Note [strategy] 2026-03-09T00:45:15.858158+00:00
+### Raised institutional gate to a hard actionable edge floor
+Institutional gate now blocks tiny positive edges, spread-not-paid setups, and mild toxicity. This moves the gate from merely hydrated to economically actionable so paper stops harvesting low-quality fills that are too thin to survive real execution.
+
+## Note [strategy] 2026-03-09T00:50:54.419121+00:00
+### Tightened institutional gate to spread-scaled prime-time standards
+Raised the institutional gate from a flat 1-cent floor to a spread-scaled minimum edge, stricter toxicity cutoff, and tighter OBI guard. This is meant to eliminate thin survivors that still looked positive on paper but are too weak for real execution.
+
+## Note [strategy] 2026-03-09T00:54:55.489546+00:00
+### Raised institutional gate to prime-time execution standards
+Tightened the remaining survivor set to a prime-time minimum edge: 2.0c for tighter books, 2.5c for wider books. This is intended to stop the last thin trades that still passed v10 and leave only clearly positive execution-grade setups.
+
+## Note [strategy] 2026-03-09T01:00:28.474159+00:00
+### Started institutional post-trade markout harvesting
+Added paper-only post-trade markout harvesting for new shadow fills. New entries now capture signed 1s, 5s, and 10s BTC markouts and append completed records to data/post_trade_markouts.jsonl. Verified rebuild, status health, and debug surface. Remaining work is to promote these markouts into authoritative toxicity scorecards and then add trimmed-mean PSV settlement logic.
+
+## Note [strategy] 2026-03-09T01:12:56.397008+00:00
+### Added safe institutional markouts route and hardened monitor path
+Added JSON-safe alias route /api/debug/institutional-markouts-safe so markout harvesting can be monitored without crashing on empty/reset responses. Existing v12 harvesting remains intact; this patch only hardens observability and source-of-truth continuity.
+
+## Note [strategy] 2026-03-09T01:50:25.976303+00:00
+### Added controlled institutional throughput relief v12
+Candidate generation remained healthy but trade opens starved under prime-time v11. Added a controlled paper-only throughput relief layer that only re-allows blocked candidates when spread is tight, OBI is supportive, toxicity is low, and edge still clears a smaller professional floor. Added stable funnel debug aliases so the candidate-to-open choke point can be monitored cleanly.
+
+## Note [strategy] 2026-03-09T01:54:00.625284+00:00
+### Relaxed throughput relief to neutral-OBI tolerant v13
+v12 starved openings because missing/neutral OBI was treated as hostile and 4-cent spreads were effectively banned. v13 treats OBI=0 as neutral, still blocks strongly adverse OBI, allows up to 4-cent spreads with paid edge thresholds, and preserves toxic-fill blocking.
+
+## Note [strategy] 2026-03-09T01:55:22.136607+00:00
+### Relaxed throughput relief to neutral-OBI tolerant v13
+v12 starved openings because missing/neutral OBI was treated as hostile and 4-cent spreads were effectively banned. v13 treats OBI=0 as neutral, still blocks strongly adverse OBI, allows up to 4-cent spreads with paid edge thresholds, and preserves toxic-fill blocking.
+
+## Note [strategy] 2026-03-09T02:04:18.823911+00:00
+### Switched throughput relief to canonical best-row selection v17
+v17 now picks the best canonical economics row per ticker across execution_compare_cohorts, market_opportunities, and candidate_events instead of blindly using the latest row. This is paper-only and preserves toxicity blocking and paid-edge floors.
+
+## Note [strategy] 2026-03-09T02:08:17.502310+00:00
+### Forced institutional picker to prioritize live executable rows v18
+v17 was allowing relief from replay/cohort rows. v18 now prioritizes live executable rows from market_opportunities and candidate_events, and replay rows can no longer unlock relief. This keeps the gate honest for prime-time paper evaluation.
+
+## Note [strategy] 2026-03-09T02:14:05.740981+00:00
+### Repriced institutional funnel from live market snapshots v19
+v18 forced live executable rows. v19 now reprices the selected row from current market_snapshots before deciding relief, so throughput is based on live ask, live fair value, live spread, and live side choice rather than a stored DB row.
+
+## Note [strategy] 2026-03-09T02:22:45.638961+00:00
+### Repaired v20 live snapshot bind syntax
+Fixed the unmatched-parenthesis bug in v20 quote binding. The live institutional funnel now reports whether each decision actually used a bound live snapshot and where that snapshot came from, so we can distinguish true live-book scarcity from a binding failure.
+
+## Note [strategy] 2026-03-09T02:26:22.404667+00:00
+### Fixed missing v17 helper symbols with compat shim v21
+Resolved the NameError blocking the institutional funnel by adding compatibility helpers for snapshot ticker/field extraction and live snapshot lookup. This does not relax the gate; it only restores the real decision path so live snapshot usage can be measured honestly.
+
+## Note [strategy] 2026-03-09T02:31:24.073515+00:00
+### Patched remaining institutional helper family with compat v22
+Added the remaining v17/v19 helper family used by the live institutional funnel: side extraction, price-for-side, spread, mid, OBI, toxicity, cluster bias, ticker lookup, and live snapshot selection. This restores the actual live decision path without relaxing any gate thresholds.
+
+## Note [strategy] 2026-03-09T02:34:30.121899+00:00
+### Restored institutional DB row fetch path with compat v23
+The institutional funnel was no longer failing on pricing helpers but on a missing DB row fetch helper. v23 restores _arch_icrp_v17_fetch_rows and DB path discovery so the live institutional funnel can actually read candidate rows and make real gate decisions again.
+
+## Note [strategy] 2026-03-09T02:43:34.702396+00:00
+### Normalized institutional fetch_rows argument handling v25
+The DB truth route proved rows existed, but the live institutional funnel was still missing them because helper calls were arriving in ticker-only or swapped-argument form. v25 normalizes fetch_rows(table,ticker), fetch_rows(ticker,table), and fetch_rows(ticker) into one canonical path and aggregates across live tables when only a ticker is supplied. This is paper-only and does not relax thresholds.
+
+## Note [strategy] 2026-03-09T03:30:02.602691+00:00
+### Architect quant gate v29 verified live
+Verified the v29 architect quant gate is live after rebuild. The app is serving /api/status, /api/debug/architect-quant-gate, /api/debug/institutional-funnel-v17, and /api/debug/full. The gate is exposed through wrapper methods and status/debug payloads, implementing reservation-price gating, OBI filtering, toxicity/signal lock, and final-window projected-settlement override.
+
+## Note [strategy] 2026-03-09T11:16:21.713998+00:00
+### Attached quant gate to shadow entry path
+Applied v29b lazy attach patch so architect quant gate can wrap ShadowEngine._should_enter after startup if ShadowEngine is not yet available at initial patch time. Rebuilt, verified /api/debug/architect-quant-gate, and checked wrapped_methods plus enter_* counters.
+
+## Note [strategy] 2026-03-09T11:27:21.021580+00:00
+### Attached quant gate to open_shadow_trade
+Found the real paper entry hook in app/strategy_lab/shadow_engine.py: ShadowEngine.open_shadow_trade. Added a tiny v29e wrapper in app/main.py to enforce architect quant gate decisions at actual paper entry time, increment enter_* counters, and record blocked_by_reason when entries are denied.
+
+## Note [strategy] 2026-03-09T11:35:08.635360+00:00
+### Added paper-only quant throughput relief v30
+Added controlled paper-only throughput relief inside the architect quant gate to address candidate starvation. The relief re-allows blocked candidates when spreads remain professional, OBI is supportive or neutral, toxicity is low, and paid edge still clears a tighter professional floor. Added /api/debug/architect-quant-throughput-relief for probe visibility.
+
+## Note [strategy] 2026-03-09T11:38:36.566338+00:00
+### Added v31 paper-only relief calibration
+Calibrated paper-only throughput relief after probe showed total starvation was driven by edge floors, not toxicity. Lowered relief edge floors to 0.5c for tight/wide spreads, kept relief paper-only, and added reason aggregation plus allowed/blocked example retention. NO-side relief remains disabled because current paper entry engine opens YES only.
+
+## Note [strategy] 2026-03-09T11:41:27.094211+00:00
+### Added v32 entry bridge telemetry
+Added truthful entry-bridge telemetry around ShadowEngine.run_shadow_variants and ShadowEngine.open_shadow_trade to locate the exact gap between candidate approval and paper entry attempts. This is a visibility patch, not a threshold patch.
+
+## Note [strategy] 2026-03-09T11:45:10.975077+00:00
+### Added v33 shadow variant bridge
+Bridged paper-only architect quant relief into the real ShadowEngine._passes_variant_rules gate and added truthful telemetry for variant-stage approvals/rejections. This closes the gap discovered by v32 where run_shadow_variants executed but never reached open_shadow_trade.
+
+## Note [strategy] 2026-03-09T11:57:34.358877+00:00
+### Added v34 bridged run_shadow_variants
+Replaced the ambiguous paper entry loop with a truthful bridged run_shadow_variants wrapper that records every downstream skip reason after variant approval and explicitly measures whether open_shadow_trade is attempted. This was done because v33 proved relief overrides existed while open_shadow_trade_calls still stayed zero. Verified rebuild plus architect-entry-bridge-v34, architect-variant-bridge, and architect-quant-gate. Remaining issue is whichever specific downstream skip reason or exception now appears in the v34 telemetry.
+
+## Note [strategy] 2026-03-09T12:36:09.562412+00:00
+### Added v38 paper performance observability
+Added /api/debug/paper-performance-v38 to summarize live paper performance while trades accumulate. The report includes open positions, recent trades, realized/unrealized PnL, per-variant stats, markout summaries, and current ShadowEngine method bindings. This helps validate the newly working v37 direct-original open path while paper history builds.
+
+## Note [strategy] 2026-03-09T12:41:33.304353+00:00
+### Added v39 markout persistence and postmortem
+Added /api/debug/paper-markouts-v39 to persist live paper markouts from open positions and summarize loss decomposition by close reason and variant. This builds the missing post-trade feedback loop while the v37 direct-original open path continues generating paper history.
+
+## Note [strategy] 2026-03-09T12:48:50.787007+00:00
+### Added v40 paper-only variant circuit breaker
+Added /api/debug/paper-guardrails-v40 to automatically block paper entries for variants with clearly bad recent realized performance or dominant model_deterioration behavior. Current policy hard-blocks conservative and adaptive, allowing aggressive to continue collecting live paper evidence while reducing further loss accumulation.
+
+## Note [strategy] 2026-03-09T12:53:44.043410+00:00
+### Added v41 aggressive-only paper continuation
+Relaxed the v40 all-stop into aggressive-only continuation. Conservative and adaptive remain blocked. Aggressive is allowed to continue in paper with 50% size for continued evidence collection.
+
+## Note [strategy] 2026-03-09T12:55:11.453274+00:00
+### Added v41 aggressive-only paper continuation
+Relaxed the v40 all-stop into aggressive-only continuation. Conservative and adaptive remain blocked. Aggressive is allowed to continue in paper with 50% size for continued evidence collection.
+
+## Note [strategy] 2026-03-09T15:31:49.669883+00:00
+### Quarantined blocked paper variants and kept aggressive-only cohort
+Closed open paper positions for crypto_lag_conservative and crypto_lag_adaptive with close_reason variant_quarantine_v42. Active paper cohort is now aggressive-only so the UI and paper guardrails match current policy.
+
+## Note [strategy] 2026-03-09T15:47:33.377253+00:00
+### Added strategy-specific consultant debug bundle v1
+Added /api/debug/strategy-bundle-v1 and linked it from /architect. Bundle includes runtime summaries, quant/guardrail state, open positions, recent trades, candidate events, opportunities, execution compare rows when present, markout/postmortem summaries, runtime method bindings, and core strategy source files for consultant review.
+
+## Note [strategy] 2026-03-09T16:08:55.485364+00:00
+### Added strategy bundle v2 for deep performance analysis
+Added /api/debug/strategy-bundle-v2 and linked it from /architect. Bundle includes trade decision packets, candidate universe sample, schemas and field definitions, cohort markers, exit diagnostics, live resolved config, market snapshot samples, runtime bindings, recent trades, open positions, markouts, postmortem summaries, and core strategy source files.
+
+## Note [strategy] 2026-03-09T16:59:36.081853+00:00
+### Applied paper-only data-truth pivot v44
+Added v44 hard pivot from replay truth. Aggressive-only. Blacklists distance_from_spot_pct 0.5%-1.5% near bucket. Prefers NO when NO edge is within 1 cent of YES edge. Adds spread-to-edge ratio gate (spread <= 50% of chosen edge), YES OBI >= 0.60, NO OBI <= 0.40, and side-aware entry pricing in run_shadow_variants. Paper-only and telemetry stored under quant.data_truth_v44.
+
+## Note [strategy] 2026-03-09T17:31:18.375360+00:00
+### Applied calibrated data-truth pivot v45
+Added v45 on top of v44. Keeps aggressive-only and the near-bucket blacklist, keeps spread-to-edge protection, relaxes YES edge floor to 0.015, keeps NO edge floor at 0.010, treats OBI ~0.5 as neutral instead of blocking, prefers NO only when NO edge is actually competitive and positive, and force-closed stale aggressive open positions with close_reason v45_reset_fresh_cohort to start a fresh cohort.
+
+## Note [strategy] 2026-03-09T17:36:40.131971+00:00
+### Applied calibrated data-truth pivot v46
+Added v46 on top of v45. Keeps aggressive-only and the near-bucket blacklist, keeps NO preference, removes the harsh spread ratio gate, and instead requires positive net edge after spread: >=0.005 for YES and >=0.0025 for NO. This is designed to let through high-quality ATM/Mid NO candidates like the 3.26c edge / 3c spread setup that v45 incorrectly blocked.
+
+## Note [strategy] 2026-03-09T17:49:54.288188+00:00
+### Applied paper-maker queue v47
+Added v47 maker-entry simulation on top of v46. Aggressive-only candidates that pass v46 are now queued as paper maker orders at 1 cent better than the current side ask instead of crossing the spread. Orders wait up to 90 seconds and only fill if a later snapshot side ask touches the improved price. Telemetry lives under quant.data_truth_v47 with queued, fills, cancels, pending orders, and attempt/fill/cancel samples.
+
+## Note [strategy] 2026-03-09T17:55:39.587310+00:00
+### Applied maker-only enforcement v48
+Added v48 maker-only enforcement on top of v47. open_shadow_trade now allows aggressive entries only when they match a live v47 pending maker order (same ticker, same side, same target price). Any untracked aggressive open is blocked, and current aggressive open positions were quarantined with close_reason v48_quarantine_untracked_open. This keeps the model strict and prevents rogue taker-style opens while we scale by adding more crypto, not by loosening thresholds.
+
+## Note [strategy] 2026-03-09T18:04:42.234988+00:00
+### Applied strict-universe breadth patch v49
+Kept the strict aggressive-only maker-only quality stack (v46-v48) and added breadth expansion logic aimed at obvious BTC-only universe gates, expanding them to BTC, ETH, SOL where safely detectable. Added v49 telemetry to record underlyings and ticker prefixes actually reaching candidate evaluation so volume can scale by more crypto, not by looser thresholds.
+
+## Note [strategy] 2026-03-09T18:08:21.411004+00:00
+### Added real market-store universe probe v50
+Added v50 telemetry at ShadowEngine.run_shadow_variants to inspect the actual market_store keys, count underlyings by ticker prefix, and expose ticker samples under quant.data_truth_v50. This is to determine whether the strict stack is currently starved because the loaded universe is BTC-only or whether ETH/SOL are already present upstream.
+
+## Note [strategy] 2026-03-09T18:17:21.066276+00:00
+### Expanded future discovery beyond BTC with v51
+Added v51 multi-asset bootstrap on top of the strict v46-v48 stack. The public events bootstrap was widened from KXBTC-only to KXBTC/KXETH/KXSOL, and refresh-time snapshot repair now derives spot_symbol/asset/series_ticker from ticker prefixes so ETH and SOL rows are not mislabeled as BTC. Verified with architect/data telemetry: check v51_events_by_series and v51_snapshot_underlyings. Remaining issue, if any, is lack of open ETH/SOL range-bucket events from Kalshi rather than model looseness.
+
+## Note [strategy] 2026-03-09T18:22:53.940760+00:00
+### Rebuilt cached watch window from multi-asset events in v52
+Added v52 on top of the strict v46-v48 stack and the v51 multi-asset event bootstrap. refresh_markets now rebuilds cached_crypto_tickers from the current KXBTC/KXETH/KXSOL event set each cycle, dedupes market tickers, and interleaves BTC/ETH/SOL pairs so the cached watch fetch cannot remain accidentally BTC-only. Use v52_rebuilt_cached_counts, v52_cached_mix_head, and v50_underlyings_in_store to confirm ETH enters the live snapshot set.
+
+## Note [strategy] 2026-03-09T18:28:37.061034+00:00
+### Added live snapshot hydration fallback v53
+Added v53 on top of v52 to force hydration of market_snapshots from the rebuilt BTC/ETH/SOL cached watch list when refresh_markets leaves snapshots empty. The patch probes available fetch methods (_fetch_cached_crypto_markets, _fetch_crypto_markets, _fetch_markets_for_tickers), merges returned rows into market_snapshots, and annotates spot_symbol/asset/series_ticker from ticker prefixes. Check quant.data_truth_v53 plus v50_underlyings_in_store to confirm ETH starts reaching the live strategy path.
+
+## Note [strategy] 2026-03-09T18:39:41.915418+00:00
+### Moved hydration fallback into active refresh path with v54
+Added v54 on top of v52. The active refresh_markets path now introspects available fetch methods, tries multiple signatures against the rebuilt BTC/ETH/SOL cached watch list, and merges any returned rows directly into market_snapshots with inferred spot_symbol/asset/series_ticker. Use quant.data_truth_v54 plus v50_underlyings_in_store to confirm ETH starts reaching live snapshots.
+
+## Note [strategy] 2026-03-09T18:46:01.436991+00:00
+### Added conservative loop watchdog v55
+Added v55 on top of the strict v46-v48 stack and multi-asset breadth work. A startup watchdog now checks whether candidate/entry/queue metrics stay flat for ~40 seconds and, only then, finds the live bot and engine objects and nudges refresh_markets, mark_positions, and run_shadow_variants. This is a liveness repair, not a threshold change.
+
+## Note [strategy] 2026-03-09T18:49:38.506821+00:00
+### Added conservative loop watchdog v55
+Added v55 on top of the strict v46-v48 stack and multi-asset breadth work. A startup watchdog now checks whether candidate/entry/queue metrics stay flat for ~40 seconds and, only then, finds the live bot and engine objects and nudges refresh_markets, mark_positions, and run_shadow_variants. This is a liveness repair, not a threshold change.
+
+## Note [strategy] 2026-03-09T18:53:34.633513+00:00
+### Bootstrapped loop watchdog from live request path in v56
+Added v56 to start the dormant watchdog from FastAPI startup, architect/data, and dashboard_status. The watchdog now directly nudges refresh_markets, mark_positions, and run_shadow_variants on a 20 second cadence after bootstrap. This is a liveness repair only and keeps the strict strategy stack unchanged.
+
+## Note [strategy] 2026-03-09T19:06:49.891149+00:00
+### Fixed watchdog to use live instances in v57
+Added v57 on top of v56. The watchdog now overrides bot/engine discovery to reject classes and find live instances from app.state, globals, and GC fallback. This fixes the missing self errors while keeping the strict strategy stack unchanged.
+
+## Note [strategy] 2026-03-09T19:24:52.659123+00:00
+### Fixed tuple cache incompatibility in v58
+Added v58 on top of v52-v57. The rebuilt multi-asset cache is now stringified back to plain ticker lists before the original refresh path consumes it, while preserving a ticker-to-symbol map for BTC/ETH annotation. This fixes the refresh_markets tuple error without loosening the strict strategy stack.
+
+## Note [strategy] 2026-03-09T19:40:23.225782+00:00
+### Bridged refresh directly into strict entry pass in v59
+Added v59 on top of the strict stack. Every successful TradingBot.refresh_markets call now immediately runs shadow_engine.mark_positions and shadow_engine.run_shadow_variants on the live bot instance, with telemetry stored under quant.data_truth_v59. This is execution-path plumbing only and does not loosen thresholds.
+
+## Note [strategy] 2026-03-09T20:05:54.973435+00:00
+### Attached refresh and entry hooks to live instances in v60
+Added v60 on top of the strict stack. Instead of class-level wrappers, the system now finds the live TradingBot and ShadowEngine instances and binds refresh_markets and run_shadow_variants wrappers directly onto those instances. The engine wrapper forces a refresh before strict entry evaluation when snapshots are empty, without loosening thresholds.
+
+## Note [strategy] 2026-03-09T20:29:41.239336+00:00
+### Attached refresh and entry hooks to live instances in v60
+Added v60 on top of the strict stack. Instead of class-level wrappers, the system now finds the live TradingBot and ShadowEngine instances and binds refresh_markets and run_shadow_variants wrappers directly onto those instances. The engine wrapper forces a refresh before strict entry evaluation when snapshots are empty, without loosening thresholds.
+
+## Note [strategy] 2026-03-10T12:53:04.143476+00:00
+### Institutional v19 snapshot field compat v27d
+Restored the missing _arch_icrp_v19_snapshot_field helper used by the v19 live snapshot repricing path so institutional funnel samples can read ticker/fair_yes/yes_bid/yes_ask/no_bid/no_ask from live market_snapshots or dashboard fallback rows. Rebuilt and rechecked /api/debug/institutional-funnel-v17, with focus on whether live_snapshot_used_v19 flips true and the stale live_snapshot_error_v19 disappears while the earlier v27c exact NO OBI boundary relief fix remains intact. Remaining work after this is the separate async runtime warnings for un-awaited coroutines in market refresh and run_shadow_variants wrappers.
+
+## Note [strategy] 2026-03-10T13:56:29.373474+00:00
+### Freeze legacy crypto_lag paper variants v31
+Recent paper trades were all coming from legacy crypto_lag variants, especially crypto_lag_aggressive, with repeated YES-side losses and close_reason=model_deterioration_v2. Added a narrow paper-side config patch for _AQG_V41_CFG to block crypto_lag_aggressive/adaptive/conservative so legacy AQG churn stops while the repaired institutional funnel remains available. Verified py_compile, rebuild, /api/debug/paper-freeze-legacy-crypto-lag-v31, and basic status routes. Remaining work is to confirm new paper trades no longer come from legacy crypto_lag churn, then inspect whether current BTC range markets are being skipped for honest no-edge reasons or another classifier issue.
+

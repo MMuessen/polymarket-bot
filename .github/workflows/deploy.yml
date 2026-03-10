@@ -1,0 +1,18 @@
+name: Sentinel Auto-Deploy
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout latest code
+        uses: actions/checkout@v3
+
+      - name: Rapid Hot-Reload
+        run: |
+          cd /home/agent/polymarket-bot
+          # This command creates the 'up' signal your server is looking for
+          sudo docker-compose up -d --build --force-recreate
+          sudo docker image prune -f

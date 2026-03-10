@@ -1,0 +1,57 @@
+# git
+.git
+.gitignore
+
+# python cache / env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.python-version
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# build artifacts
+build/
+dist/
+*.egg-info/
+
+# local editor / OS junk
+.DS_Store
+.idea/
+.vscode/
+
+# logs / temp
+*.log
+logs/
+tmp/
+temp/
+
+# notebooks / reports / screenshots
+*.ipynb
+screenshots/
+artifacts/
+reports/
+
+# backups / handoff clutter
+*.bak
+*.bak.*
+*~
+NEXT_CHAT_DEBUG_BUNDLE.md
+*_handoff*.txt
+*_handoff*.md
+
+# node junk if any
+node_modules/
+
+# model / cache dirs
+.cache/
+ollama/
+models/
+
+# docker leftovers
+docker-data/

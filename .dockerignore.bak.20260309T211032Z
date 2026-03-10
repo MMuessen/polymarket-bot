@@ -1,0 +1,8 @@
+# Ignore the massive runner folder
+actions-runner/
+# Ignore standard heavy folders
+.git/
+.github/
+ollama_data/
+__pycache__/
+*.log
